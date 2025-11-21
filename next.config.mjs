@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,11 +7,14 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    domains: ['lh3.googleusercontent.com', 'avatars.githubusercontent.com'],
+    unoptimized: false,
   },
-  // Disable static optimization that might cause issues
+  // Server-side rendering for API routes
   experimental: {
-    esmExternals: false,
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
 }
 
