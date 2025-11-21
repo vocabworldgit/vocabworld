@@ -1,0 +1,83 @@
+{
+  "greetings": {
+    "hello": {
+      "russian": "привет",
+      "spanish": "hola",
+      "french": "bonjour",
+      "german": "hallo",
+      "chinese": "你好"
+    },
+    "good morning": {
+      "russian": "доброе утро",
+      "spanish": "buenos días",
+      "french": "bonjour",
+      "german": "guten Morgen",
+      "chinese": "早上好"
+    },
+    "good evening": {
+      "russian": "добрый вечер",
+      "spanish": "buenas tardes",
+      "french": "bonsoir",
+      "german": "guten Abend",
+      "chinese": "晚上好"
+    },
+    "goodbye": {
+      "russian": "до свидания",
+      "spanish": "adiós",
+      "french": "au revoir",
+      "german": "auf Wiedersehen",
+      "chinese": "再见"
+    },
+    "thank you": {
+      "russian": "спасибо",
+      "spanish": "gracias",
+      "french": "merci",
+      "german": "danke",
+      "chinese": "谢谢"
+    }
+  },
+  "numbers": {
+    "zero": {
+      "russian": "ноль",
+      "spanish": "cero",
+      "french": "zéro",
+      "german": "null",
+      "chinese": "零"
+    },
+    "one": {
+      "russian": "один",
+      "spanish": "uno",
+      "french": "un",
+      "german": "eins",
+      "chinese": "一"
+    },
+    "two": {
+      "russian": "два",
+      "spanish": "dos",
+      "french": "deux",
+      "german": "zwei",
+      "chinese": "二"
+    },
+    "three": {
+      "russian": "три",
+      "spanish": "tres",
+      "french": "trois",
+      "german": "drei",
+      "chinese": "三"
+    },
+    "four": {
+      "russian": "четыре",
+      "spanish": "cuatro",
+      "french": "quatre",
+      "german": "vier",
+      "chinese": "四"
+    },
+    "five": {
+      "russian": "пять",
+      "spanish": "cinco",
+      "french": "cinq",
+      "german": "fünf",
+      "chinese": "五"
+    }
+  }
+}
