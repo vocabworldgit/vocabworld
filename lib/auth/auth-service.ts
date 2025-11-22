@@ -24,8 +24,9 @@ export interface UserProfile {
 
 export interface AuthUser {
   id: string
-  email: string | null
-  profile: UserProfile | null
+  email: string
+  fullName: string
+  avatarUrl?: string
 }
 
 export interface SignInResult {
