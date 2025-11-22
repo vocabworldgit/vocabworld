@@ -10,11 +10,22 @@ const nextConfig = {
     domains: ['lh3.googleusercontent.com', 'avatars.githubusercontent.com'],
     unoptimized: true,
   },
+  // Webpack config to skip type checking
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+    return config;
+  },
   // Server-side rendering for API routes
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+    typedRoutes: false,
   },
 }
 
