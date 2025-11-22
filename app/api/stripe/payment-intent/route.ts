@@ -83,18 +83,41 @@ export async function POST(request: NextRequest) {
 
     const subscription = await stripe.subscriptions.create(subscriptionData)
 
+    console.log('✅ Subscription created:', {
+      id: subscription.id,
+      status: subscription.status,
+      latest_invoice: typeof subscription.latest_invoice
+    })
+
     const invoice = subscription.latest_invoice as any
+    console.log('📄 Invoice:', {
+      exists: !!invoice,
+      type: typeof invoice,
+      id: invoice?.id,
+      payment_intent: typeof invoice?.payment_intent
+    })
+
     const paymentIntent = invoice?.payment_intent
+    console.log('💳 Payment Intent:', {
+      exists: !!paymentIntent,
+      type: typeof paymentIntent,
+      client_secret: paymentIntent?.client_secret ? 'exists' : 'missing',
+      raw: paymentIntent
+    })
 
     if (!paymentIntent?.client_secret) {
-      console.error('❌ No client secret in payment intent:', { subscription, invoice, paymentIntent })
-      throw new Error('Failed to create subscription payment intent')
+      console.error('❌ No client secret in payment intent:', { 
+        subscription: JSON.stringify(subscription, null, 2),
+        invoice: JSON.stringify(invoice, null, 2),
+        paymentIntent: JSON.stringify(paymentIntent, null, 2)
+      })
+      throw new Error('Failed to create subscription payment intent - no client secret')
     }
 
     console.log('✅ Subscription created successfully:', {
       subscriptionId: subscription.id,
       status: subscription.status,
-      clientSecret: paymentIntent.client_secret ? 'exists' : 'missing'
+      clientSecret: 'exists'
     })
 
     return NextResponse.json({
