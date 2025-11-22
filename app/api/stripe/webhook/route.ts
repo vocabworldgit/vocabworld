@@ -85,14 +85,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     console.log('📊 Subscription retrieved:', {
       id: subscription.id,
       status: subscription.status,
-      current_period_start: subscription.current_period_start,
-      current_period_end: subscription.current_period_end
+      current_period_start: (subscription as any).current_period_start,
+      current_period_end: (subscription as any).current_period_end
     })
     
     // Calculate period end - use current_period_end from subscription or default to 30 days
     let periodEnd: Date
-    if (subscription.current_period_end) {
-      periodEnd = new Date(subscription.current_period_end * 1000)
+    if ((subscription as any).current_period_end) {
+      periodEnd = new Date((subscription as any).current_period_end * 1000)
     } else {
       // Default to 30 days from now if not set
       periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
