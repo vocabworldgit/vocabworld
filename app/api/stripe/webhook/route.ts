@@ -113,7 +113,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, stri
   const status = sub.status === 'trialing' ? 'trialing' : 
                  sub.status === 'active' ? 'active' : 'pending'
 
-  await subscriptionService.upsertUserSubscription(userId, {
+  await subscriptionService.upsertUserSubscription({
+    userId,
     stripeSubscriptionId: sub.id,
     stripeCustomerId: sub.customer as string,
     status,
@@ -154,7 +155,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, stri
                  sub.status === 'active' ? 'active' : 
                  sub.status === 'canceled' ? 'cancelled' : 'pending'
 
-  await subscriptionService.upsertUserSubscription(userId, {
+  await subscriptionService.upsertUserSubscription({
+    userId,
     stripeSubscriptionId: sub.id,
     stripeCustomerId: sub.customer as string,
     status,
@@ -188,7 +190,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription, stri
     userId,
   })
 
-  await subscriptionService.upsertUserSubscription(userId, {
+  await subscriptionService.upsertUserSubscription({
+    userId,
     stripeSubscriptionId: sub.id,
     stripeCustomerId: sub.customer as string,
     status: 'cancelled',
