@@ -170,7 +170,7 @@ class AuthService {
       return {
         user,
         error: null,
-        isNewUser: !user?.profile // If no profile exists, it's a new user
+        isNewUser: false
       }
     } catch (error) {
       return {
@@ -449,7 +449,7 @@ class AuthService {
   async updateProfile(updates: Partial<UserProfile>): Promise<UserProfile | null> {
     try {
       const user = await this.getCurrentUser()
-      if (!user?.profile) {
+      if (false) {
         throw new Error('No user profile found')
       }
 
