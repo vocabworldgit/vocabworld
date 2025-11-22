@@ -101,8 +101,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.userId
-  const planId = subscription.metadata?.planId
+  const sub = subscription as any
+  const userId = sub.metadata?.userId
+  const planId = sub.metadata?.planId
 
   if (!userId || !planId) {
     console.error('Missing metadata in subscription')
@@ -110,23 +111,23 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   }
 
   console.log('✅ STRIPE WEBHOOK: Subscription created', {
-    subscriptionId: subscription.id,
+    subscriptionId: sub.id,
     userId,
     planId,
-    status: subscription.status,
+    status: sub.status,
   })
 
-  const status = subscription.status === 'trialing' ? 'trialing' : 
-                 subscription.status === 'active' ? 'active' : 'pending'
+  const status = sub.status === 'trialing' ? 'trialing' : 
+                 sub.status === 'active' ? 'active' : 'pending'
 
   await subscriptionService.upsertUserSubscription(userId, {
-    stripeSubscriptionId: subscription.id,
-    stripeCustomerId: subscription.customer as string,
+    stripeSubscriptionId: sub.id,
+    stripeCustomerId: sub.customer as string,
     status,
     planType: planId as 'monthly' | 'yearly',
-    currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+    currentPeriodStart: new Date(sub.current_period_start * 1000),
+    currentPeriodEnd: new Date(sub.current_period_end * 1000),
+    trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
   })
 
   await subscriptionService.logSubscriptionEvent(
@@ -141,8 +142,9 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.userId
-  const planId = subscription.metadata?.planId
+  const sub = subscription as any
+  const userId = sub.metadata?.userId
+  const planId = sub.metadata?.planId
 
   if (!userId) {
     console.error('Missing userId in subscription metadata')
@@ -150,37 +152,38 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   }
 
   console.log('🔄 STRIPE WEBHOOK: Subscription updated', {
-    subscriptionId: subscription.id,
+    subscriptionId: sub.id,
     userId,
-    status: subscription.status,
+    status: sub.status,
   })
 
-  const status = subscription.status === 'trialing' ? 'trialing' : 
-                 subscription.status === 'active' ? 'active' : 
-                 subscription.status === 'canceled' ? 'cancelled' : 'pending'
+  const status = sub.status === 'trialing' ? 'trialing' : 
+                 sub.status === 'active' ? 'active' : 
+                 sub.status === 'canceled' ? 'cancelled' : 'pending'
 
   await subscriptionService.upsertUserSubscription(userId, {
-    stripeSubscriptionId: subscription.id,
-    stripeCustomerId: subscription.customer as string,
+    stripeSubscriptionId: sub.id,
+    stripeCustomerId: sub.customer as string,
     status,
     planType: planId as 'monthly' | 'yearly',
-    currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+    currentPeriodStart: new Date(sub.current_period_start * 1000),
+    currentPeriodEnd: new Date(sub.current_period_end * 1000),
+    trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
   })
 
   await subscriptionService.logSubscriptionEvent(
     userId,
     'subscription_updated',
     {
-      subscriptionId: subscription.id,
-      status: subscription.status,
+      subscriptionId: sub.id,
+      status: sub.status,
     }
   )
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.userId
+  const sub = subscription as any
+  const userId = sub.metadata?.userId
 
   if (!userId) {
     console.error('Missing userId in subscription metadata')
@@ -188,16 +191,16 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   }
 
   console.log('❌ STRIPE WEBHOOK: Subscription deleted', {
-    subscriptionId: subscription.id,
+    subscriptionId: sub.id,
     userId,
   })
 
   await subscriptionService.upsertUserSubscription(userId, {
-    stripeSubscriptionId: subscription.id,
-    stripeCustomerId: subscription.customer as string,
+    stripeSubscriptionId: sub.id,
+    stripeCustomerId: sub.customer as string,
     status: 'cancelled',
-    currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    currentPeriodStart: new Date(sub.current_period_start * 1000),
+    currentPeriodEnd: new Date(sub.current_period_end * 1000),
   })
 
   await subscriptionService.logSubscriptionEvent(
