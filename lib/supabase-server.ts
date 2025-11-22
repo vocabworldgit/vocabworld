@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import Stripe from 'stripe'
 
 /**
  * Get a Supabase client for server-side use with service role key
@@ -28,4 +29,20 @@ export function getSupabaseClient() {
   }
   
   return createClient(url, key)
+}
+
+/**
+ * Get a Stripe client for server-side use
+ * Lazy-loaded to prevent build-time initialization errors
+ */
+export function getStripeServer() {
+  const key = process.env.STRIPE_SECRET_KEY
+  
+  if (!key) {
+    throw new Error('Missing STRIPE_SECRET_KEY environment variable')
+  }
+  
+  return new Stripe(key, {
+    apiVersion: '2025-09-30.clover',
+  })
 }

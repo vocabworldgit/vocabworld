@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
-import { getSupabaseServer } from '@/lib/supabase-server'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-09-30.clover',
-})
+import { getSupabaseServer, getStripeServer } from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseServer()
+  const stripe = getStripeServer()
   try {
     const { planId, userId } = await request.json()
 
