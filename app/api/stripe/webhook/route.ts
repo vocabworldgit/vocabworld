@@ -77,19 +77,42 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       apiVersion: '2025-09-30.clover'
     })
     
-    const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+    const subscription = await stripe.subscriptions.retrieve(
+      session.subscription as string,
+      { expand: ['latest_invoice'] }
+    )
+    
+    console.log('📊 Subscription retrieved:', {
+      id: subscription.id,
+      status: subscription.status,
+      current_period_start: subscription.current_period_start,
+      current_period_end: subscription.current_period_end
+    })
+    
+    // Calculate period end - use current_period_end from subscription or default to 30 days
+    let periodEnd: Date
+    if (subscription.current_period_end) {
+      periodEnd = new Date(subscription.current_period_end * 1000)
+    } else {
+      // Default to 30 days from now if not set
+      periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      console.log('⚠️ No current_period_end, using default 30 days')
+    }
     
     // Activate premium immediately after checkout
     await subscriptionService.activatePremium(
       userId,
       session.customer as string,
       subscription.id,
-      new Date((subscription as any).current_period_end * 1000)
+      periodEnd
     )
 
     console.log('✅ Premium activated after checkout')
     console.log('   User ID:', userId)
     console.log('   Subscription status:', subscription.status)
+    console.log('   Period end:', periodEnd)
+  } else {
+    console.error('❌ No subscription ID in checkout session')
   }
 }
 
