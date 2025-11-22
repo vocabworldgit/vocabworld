@@ -1,10 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-
-// Create server-side client with service role key
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getSupabaseServer } from '@/lib/supabase-server'
 
 export interface UserSubscription {
   id: string
@@ -27,7 +21,12 @@ export interface AccessResult {
 }
 
 class SimpleSubscriptionService {
+  private getSupabase() {
+    return getSupabaseServer()
+  }
+
   async checkUserPremiumAccess(userId: string): Promise<boolean> {
+    const supabase = this.getSupabase()
     try {
       // Get user profile first
       const { data: userProfile, error: profileError } = await supabase
@@ -84,6 +83,7 @@ class SimpleSubscriptionService {
   }
 
   async checkTopicAccess(userId: string, topicId: number): Promise<AccessResult> {
+    const supabase = this.getSupabase()
     try {
       // Topic 1 (greetings) is always free
       if (topicId === 1) {
@@ -117,6 +117,7 @@ class SimpleSubscriptionService {
   }
 
   async getUserSubscription(userId: string): Promise<UserSubscription | null> {
+    const supabase = this.getSupabase()
     try {
       // Get user profile first
       const { data: userProfile, error: profileError } = await supabase
@@ -196,6 +197,7 @@ class SimpleSubscriptionService {
   }
 
   async upsertUserSubscription(userId: string, subscriptionData: Partial<UserSubscription>): Promise<UserSubscription | null> {
+    const supabase = this.getSupabase()
     try {
       const { data, error } = await supabase
         .from('user_subscriptions')
@@ -226,6 +228,7 @@ class SimpleSubscriptionService {
   }
 
   async logSubscriptionEvent(userId: string, eventType: string, eventData: any): Promise<void> {
+    const supabase = this.getSupabase()
     try {
       await supabase
         .from('subscription_events')
@@ -241,6 +244,7 @@ class SimpleSubscriptionService {
   }
 
   async logTopicAccess(userId: string, topicId: number, hasAccess: boolean, userAgent: string): Promise<void> {
+    const supabase = this.getSupabase()
     try {
       await supabase
         .from('user_access_log')
