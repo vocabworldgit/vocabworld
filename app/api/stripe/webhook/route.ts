@@ -124,6 +124,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, stri
       currentPeriodStart: new Date(sub.current_period_start * 1000),
       currentPeriodEnd: new Date(sub.current_period_end * 1000),
       trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+      premiumFeaturesEnabled: true,
     })
     console.log('✅ Subscription upserted successfully:', result)
   } catch (error) {
@@ -172,6 +173,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, stri
     currentPeriodStart: new Date(sub.current_period_start * 1000),
     currentPeriodEnd: new Date(sub.current_period_end * 1000),
     trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+    premiumFeaturesEnabled: status === 'active' || status === 'trialing',
   })
 
   await subscriptionService.logSubscriptionEvent(
@@ -205,6 +207,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription, stri
     status: 'cancelled',
     currentPeriodStart: new Date(sub.current_period_start * 1000),
     currentPeriodEnd: new Date(sub.current_period_end * 1000),
+    premiumFeaturesEnabled: false,
   })
 
   await subscriptionService.logSubscriptionEvent(
