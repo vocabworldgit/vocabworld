@@ -119,21 +119,32 @@ export async function POST(request: NextRequest) {
     }
 
     // For non-zero invoices, get or create the payment intent for the invoice
-    console.log('💳 Getting payment intent for invoice...')
-    
-    // Finalize the invoice to get its payment intent
-    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
-      auto_advance: false, // Don't auto-charge, we'll collect payment manually
+    console.log('💳 Getting payment intent for invoice...', {
+      invoice_id: invoice.id,
+      invoice_status: invoice.status,
+      amount_due: invoice.amount_due
     })
+    
+    let finalizedInvoice = invoice
+    
+    // Only finalize if invoice is still in draft status
+    if (invoice.status === 'draft') {
+      console.log('Finalizing draft invoice...')
+      finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
+        auto_advance: false, // Don't auto-charge, we'll collect payment manually
+      })
+    }
 
     // Now get the payment intent that Stripe created for this invoice
     let paymentIntent
     if ((finalizedInvoice as any).payment_intent) {
+      console.log('Payment intent exists on invoice, retrieving...')
       paymentIntent = await stripe.paymentIntents.retrieve(
         (finalizedInvoice as any).payment_intent as string
       )
     } else {
       // If no payment intent exists, create one for the invoice
+      console.log('No payment intent found, creating new one...')
       paymentIntent = await stripe.paymentIntents.create({
         amount: finalizedInvoice.amount_due,
         currency: 'usd',
