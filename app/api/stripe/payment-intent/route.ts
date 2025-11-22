@@ -118,23 +118,43 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // For non-zero invoices, manually create a payment intent
-    console.log('💳 Creating payment intent for invoice...')
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: invoice.amount_due,
-      currency: 'usd',
-      customer: customer.id,
-      metadata: {
-        subscription_id: subscription.id,
-        invoice_id: invoice.id,
-        user_id: userId
-      },
-      automatic_payment_methods: {
-        enabled: true,
-      },
+    // For non-zero invoices, get or create the payment intent for the invoice
+    console.log('💳 Getting payment intent for invoice...')
+    
+    // Finalize the invoice to get its payment intent
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
+      auto_advance: false, // Don't auto-charge, we'll collect payment manually
     })
 
-    console.log('✅ Payment intent created:', {
+    // Now get the payment intent that Stripe created for this invoice
+    let paymentIntent
+    if (finalizedInvoice.payment_intent) {
+      paymentIntent = await stripe.paymentIntents.retrieve(
+        finalizedInvoice.payment_intent as string
+      )
+    } else {
+      // If no payment intent exists, create one for the invoice
+      paymentIntent = await stripe.paymentIntents.create({
+        amount: finalizedInvoice.amount_due,
+        currency: 'usd',
+        customer: customer.id,
+        metadata: {
+          subscription_id: subscription.id,
+          invoice_id: finalizedInvoice.id,
+          user_id: userId
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      })
+      
+      // Update the invoice to use this payment intent
+      await stripe.invoices.update(finalizedInvoice.id, {
+        payment_intent: paymentIntent.id
+      })
+    }
+
+    console.log('✅ Payment intent ready:', {
       id: paymentIntent.id,
       status: paymentIntent.status,
       has_client_secret: !!paymentIntent.client_secret
