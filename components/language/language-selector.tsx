@@ -557,7 +557,7 @@ export function LanguageSelector() {
     }
   }
 
-  const { user, profile, refreshUser, signOut, signInWithGoogle, checkTopicAccess } = useAuth()
+  const { user, refreshUser, signOut, signInWithGoogle, checkTopicAccess } = useAuth()
   const [currentPage, setCurrentPage] = useState<PageState>("native")
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [nativeLanguage, setNativeLanguage] = useState("")
