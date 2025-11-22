@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(plan.price * 100), // Convert to cents
       currency: plan.currency.toLowerCase(),
-      customer_email: user.email,
+      receipt_email: user.email,
       metadata: {
         userId,
         planId,
