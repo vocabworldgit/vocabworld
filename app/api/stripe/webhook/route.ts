@@ -213,8 +213,10 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
-  const userId = subscription.metadata?.userId
+  const inv = invoice as any
+  const subscription = await stripe.subscriptions.retrieve(inv.subscription as string)
+  const sub = subscription as any
+  const userId = sub.metadata?.userId
 
   if (!userId) {
     console.error('Missing userId in subscription metadata')
@@ -240,8 +242,10 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
-  const userId = subscription.metadata?.userId
+  const inv = invoice as any
+  const subscription = await stripe.subscriptions.retrieve(inv.subscription as string)
+  const sub = subscription as any
+  const userId = sub.metadata?.userId
 
   if (!userId) {
     console.error('Missing userId in subscription metadata')
@@ -249,19 +253,19 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 
   console.log('💳 STRIPE WEBHOOK: Payment failed', {
-    invoiceId: invoice.id,
-    subscriptionId: subscription.id,
+    invoiceId: inv.id,
+    subscriptionId: sub.id,
     userId,
-    amount: invoice.amount_due,
+    amount: inv.amount_due,
   })
 
   await subscriptionService.logSubscriptionEvent(
     userId,
     'payment_failed',
     {
-      invoiceId: invoice.id,
-      subscriptionId: subscription.id,
-      amount: invoice.amount_due,
+      invoiceId: inv.id,
+      subscriptionId: sub.id,
+      amount: inv.amount_due,
     }
   )
 }
