@@ -263,7 +263,7 @@ class AuthService {
       return {
         user,
         error: null,
-        isNewUser: !user?.profile // If no profile exists, it's a new user
+        isNewUser: false
       }
     } catch (error) {
       return {
