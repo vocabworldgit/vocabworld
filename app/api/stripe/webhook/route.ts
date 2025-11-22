@@ -84,7 +84,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       userId,
       session.customer as string,
       subscription.id,
-      new Date(subscription.current_period_end * 1000)
+      new Date((subscription as any).current_period_end * 1000)
     )
 
     console.log('✅ Premium activated after checkout')
