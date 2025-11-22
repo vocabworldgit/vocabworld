@@ -69,6 +69,28 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log('✅ Checkout completed for user:', userId)
   console.log('   Session ID:', session.id)
   console.log('   Customer ID:', session.customer)
+  console.log('   Subscription ID:', session.subscription)
+
+  // Get the subscription details
+  if (session.subscription) {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-09-30.clover'
+    })
+    
+    const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+    
+    // Activate premium immediately after checkout
+    await subscriptionService.activatePremium(
+      userId,
+      session.customer as string,
+      subscription.id,
+      new Date(subscription.current_period_end * 1000)
+    )
+
+    console.log('✅ Premium activated after checkout')
+    console.log('   User ID:', userId)
+    console.log('   Subscription status:', subscription.status)
+  }
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {

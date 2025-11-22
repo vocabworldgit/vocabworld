@@ -55,25 +55,25 @@ export function PaywallModal({ isOpen, onCloseAction, onSubscriptionSuccess }: P
       setError(null)
       setLoading(planId)
 
-      // Store current state before payment
-      storeCurrentState()
+      console.log('Redirecting to Stripe Checkout...')
 
-      console.log('Creating subscription...')
-
-      const response = await fetch('/api/stripe/payment-intent', {
+      const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId, userId: user.id }),
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to create subscription')
+      if (!response.ok) throw new Error(data.error || 'Failed to create checkout session')
 
-      setClientSecret(data.clientSecret)
-      setPaymentIntentId(data.subscriptionId)
-      setShowCheckout(true)
+      // Redirect to Stripe Checkout
+      if (data.sessionUrl) {
+        window.location.href = data.sessionUrl
+      } else {
+        throw new Error('No checkout URL received')
+      }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to start subscription')
+      setError(error instanceof Error ? error.message : 'Failed to start checkout')
       setLoading(null)
     }
   }
