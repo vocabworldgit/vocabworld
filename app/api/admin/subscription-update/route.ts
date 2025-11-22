@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
           stripeCustomerId: `admin_customer_${userId.slice(0, 8)}`,
         })
 
-        await subscriptionService.logSubscriptionEvent(
+        await (subscriptionService as any).logSubscriptionEvent(
           userId,
-          'access_granted' as any,
-          { days, planType, grantedBy: 'admin' }
+          'access_granted',
+          'manual'
         )
         break
 
