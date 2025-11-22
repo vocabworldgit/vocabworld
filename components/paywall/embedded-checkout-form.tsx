@@ -86,33 +86,15 @@ export function EmbeddedCheckoutForm({
       }
       setIsProcessing(false)
     } else {
-      // Payment succeeded
-      try {
-        // Call the manual grant API to ensure subscription is activated
-        if (paymentIntentId) {
-          const response = await fetch('/api/subscription/manual-grant', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentIntentId }),
-          })
-          
-          if (!response.ok) {
-            console.error('Manual grant failed, but payment succeeded')
-          }
-        }
-        
-        setMessage('Payment succeeded!')
-        setIsComplete(true)
-        
-        // Small delay to show success message
-        setTimeout(() => {
-          onSuccess()
-        }, 1500)
-      } catch (error) {
-        console.error('Error in post-payment processing:', error)
-        // Still call success since payment went through
+      // Payment succeeded - webhook will handle activation
+      console.log('💳 Payment confirmed successfully')
+      setMessage('Payment succeeded!')
+      setIsComplete(true)
+      
+      // Call success callback which will refresh the page
+      setTimeout(() => {
         onSuccess()
-      }
+      }, 1000)
       
       setIsProcessing(false)
     }
