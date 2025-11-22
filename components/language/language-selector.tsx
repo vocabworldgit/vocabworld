@@ -81,7 +81,6 @@ interface TopicSliderProps {
   getTopicDisplayName: (id: number, name: string) => string
   isIOS?: boolean
   user: any
-  profile: any
   signOut: () => Promise<void>
   nativeLanguage: string
   targetLanguage: string
@@ -100,7 +99,6 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
   getTopicDisplayName,
   isIOS = false,
   user,
-  profile,
   signOut,
   nativeLanguage,
   targetLanguage,
