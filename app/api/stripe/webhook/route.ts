@@ -72,23 +72,24 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 
   const isActive = subscription.status === 'active' || subscription.status === 'trialing'
+  const sub = subscription as any
 
   if (isActive) {
     // Activate premium
     await subscriptionService.activatePremium(
       userId,
-      subscription.customer as string,
-      subscription.id,
-      new Date(subscription.current_period_end * 1000)
+      sub.customer as string,
+      sub.id,
+      new Date(sub.current_period_end * 1000)
     )
 
     console.log('✅ Premium activated')
     console.log('   User ID:', userId)
-    console.log('   Subscription ID:', subscription.id)
-    console.log('   Status:', subscription.status)
-    console.log('   Period end:', new Date(subscription.current_period_end * 1000))
+    console.log('   Subscription ID:', sub.id)
+    console.log('   Status:', sub.status)
+    console.log('   Period end:', new Date(sub.current_period_end * 1000))
   } else {
-    console.log('⚠️  Subscription not active:', subscription.status)
+    console.log('⚠️  Subscription not active:', sub.status)
   }
 }
 
