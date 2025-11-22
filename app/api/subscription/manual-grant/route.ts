@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     const subscription = await stripe.subscriptions.create(subscriptionData)
+    const sub = subscription as any
 
     // Check if subscription exists in our database
     const { data: existingSubscription } = await supabase
@@ -145,12 +146,12 @@ export async function POST(request: NextRequest) {
         .from('stripe_subscriptions')
         .insert({
           user_profile_id: userProfile.id,
-          stripe_subscription_id: subscription.id,
+          stripe_subscription_id: sub.id,
           stripe_customer_id: customerId,
           stripe_price_id: planConfig.stripePriceId,
           status: 'active',
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
           cancel_at_period_end: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -167,7 +168,7 @@ export async function POST(request: NextRequest) {
         .update({
           subscription_status: 'premium',
           subscription_platform: 'stripe',
-          subscription_id: subscription.id,
+          subscription_id: sub.id,
           stripe_customer_id: customerId,
           updated_at: new Date().toISOString(),
         })
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
         .insert({
           user_profile_id: userProfile.id,
           platform: 'stripe',
-          subscription_id: subscription.id,
+          subscription_id: sub.id,
           status: 'active',
           started_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
@@ -188,7 +189,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      subscriptionId: subscription.id,
+      subscriptionId: sub.id,
       message: 'Subscription created successfully',
     })
   } catch (error) {
