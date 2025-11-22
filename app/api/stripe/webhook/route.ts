@@ -141,7 +141,6 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, stri
       status: subscription.status,
     }
   )
-} )
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription, stripe: Stripe) {
