@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
         await subscriptionService.logSubscriptionEvent(
           userId,
-          'admin_grant_premium',
+          'access_granted' as any,
           { days, planType, grantedBy: 'admin' }
         )
         break
