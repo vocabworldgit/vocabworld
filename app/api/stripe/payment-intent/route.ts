@@ -128,9 +128,9 @@ export async function POST(request: NextRequest) {
 
     // Now get the payment intent that Stripe created for this invoice
     let paymentIntent
-    if (finalizedInvoice.payment_intent) {
+    if ((finalizedInvoice as any).payment_intent) {
       paymentIntent = await stripe.paymentIntents.retrieve(
-        finalizedInvoice.payment_intent as string
+        (finalizedInvoice as any).payment_intent as string
       )
     } else {
       // If no payment intent exists, create one for the invoice
