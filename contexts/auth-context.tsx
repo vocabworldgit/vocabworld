@@ -144,6 +144,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 isPremium: data.isPremium
               })
             }
+            
+            // Update login streak
+            try {
+              await fetch('/api/progress/streak', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id })
+              })
+              console.log('✅ Login streak updated')
+            } catch (error) {
+              console.error('Failed to update login streak:', error)
+            }
           }
         }
       } catch (error) {

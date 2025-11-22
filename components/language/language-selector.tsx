@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Topic, VocabularyWord, VocabularyResponse, getTopics, getVocabularyForTopic } from "@/lib/database"
 import { useAuth } from "@/contexts/auth-context"
 import { PaywallModal } from "@/components/paywall/paywall-modal"
+import { ProgressStats } from "@/components/progress/progress-stats"
 
 declare global {
   interface Window {
@@ -89,6 +90,7 @@ interface TopicSliderProps {
   setShowPaywall: (show: boolean) => void
   handleSignOut: () => Promise<void>
   getFlagIcon: (languageCode: string) => string
+  completedTopicIds: number[]
 }
 
 const TopicSlider: React.FC<TopicSliderProps> = ({ 
@@ -106,7 +108,8 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
   showPaywall,
   setShowPaywall,
   handleSignOut,
-  getFlagIcon
+  getFlagIcon,
+  completedTopicIds
 }) => {
   const [currentSection, setCurrentSection] = useState(1) // Start with FIRST AID KIT (index 1)
   const [touchStart, setTouchStart] = useState(0)
@@ -286,6 +289,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
   const renderTopicButton = (topic: Topic) => {
     const hasCustomIcon = topic.icon
     const iconData = TOPIC_ICONS.find(icon => icon.id === topic.id)
+    const isCompleted = completedTopicIds.includes(topic.id)
     
     // Direct mapping for custom SVG icons
     const customSVGIcons: { [key: number]: string } = {
@@ -297,8 +301,10 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
       <button
         key={topic.id}
         onClick={() => onTopicSelect(topic)}
-        className={`bg-black/40 border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center hover:bg-black/50 transition-all duration-300 transform hover:scale-[1.02] h-32 sm:h-36 shadow-lg hover:shadow-xl ${
+        className={`bg-black/40 border rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center hover:bg-black/50 transition-all duration-300 transform hover:scale-[1.02] h-32 sm:h-36 shadow-lg hover:shadow-xl ${
           selectedTopic?.id === topic.id ? "bg-black/60 border-white/30 shadow-xl" : ""
+        } ${
+          isCompleted ? "border-white/60 shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse" : "border-white/20"
         }`}
       >
         <div className="flex flex-col items-center justify-center h-full gap-2">
@@ -366,37 +372,13 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
               {/* Account section special content */}
               {section.isAccount ? (
                 <div className="h-full flex flex-col space-y-2.5 sm:space-y-3">
-                  {/* Progress Section - Moved to top */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 h-32 sm:h-36 flex flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-white font-medium text-base flex items-center space-x-2">
-                        <Icon icon="solar:chart-bold" width="20" height="20" className="text-green-400" />
-                        <span>Progress</span>
-                      </h4>
-                      {targetLanguage && (
-                        <div className="flex items-center space-x-1">
-                          <Icon icon={getFlagIcon(targetLanguageCode)} width="20" height="20" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-white/70 flex items-center space-x-1">
-                          <Icon icon="solar:fire-bold" width="16" height="16" className="text-orange-400" />
-                          <span>Daily Streak:</span>
-                        </span>
-                        <span className="text-white font-medium">3 days</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-white/70">Topics Unlocked:</span>
-                        <span className="text-white">1 / 39</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-white/70">Words Learned:</span>
-                        <span className="text-white">-</span>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Progress Section with Real Data */}
+                  {targetLanguageCode && (
+                    <ProgressStats 
+                      targetLanguageCode={targetLanguageCode}
+                      targetLanguageName={targetLanguage}
+                    />
+                  )}
 
                   {/* Merged User Info, Subscription, and Sign Out */}
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 space-y-4">
@@ -597,6 +579,18 @@ export function LanguageSelector() {
     
     detectIOS();
   }, []);
+
+  // 📊 Set global variables for progress tracking in audio service
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__vocaWorldUserId = user?.id || null;
+      (window as any).__vocaWorldTargetLangCode = targetLanguageCode || null;
+      console.log('📊 Progress tracking globals set:', {
+        userId: user?.id,
+        targetLangCode: targetLanguageCode
+      });
+    }
+  }, [user?.id, targetLanguageCode]);
 
   // Audio state
   const [isPlaying, setIsPlaying] = useState(false)
@@ -1168,6 +1162,28 @@ export function LanguageSelector() {
 
               console.log('🎉 Alnilam sequence completed successfully');
               
+              // Track word progress when audio completes successfully
+              // Get user from context - we'll need to access user state
+              const userId = (window as any).__vocaWorldUserId;
+              const targetLangCode = (window as any).__vocaWorldTargetLangCode;
+              
+              if (userId && wordId && targetLangCode) {
+                try {
+                  await fetch('/api/progress/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      userId: userId,
+                      vocabularyId: wordId,
+                      targetLanguageCode: targetLangCode
+                    })
+                  });
+                  console.log('📊 Progress tracked for word:', wordId);
+                } catch (error) {
+                  console.error('Failed to track progress:', error);
+                }
+              }
+              
               // Reset visual indicator to idle
               if (settings?.setCurrentAudioStep) {
                 settings.setCurrentAudioStep('idle');
@@ -1332,6 +1348,25 @@ export function LanguageSelector() {
           
           if (alnilamSuccess) {
             console.log('✅ Alnilam audio completed successfully')
+            
+            // Track word progress when audio is played successfully
+            if (user?.id && wordId && targetLanguageCode) {
+              try {
+                await fetch('/api/progress/track', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: user.id,
+                    vocabularyId: wordId,
+                    targetLanguageCode: targetLanguageCode
+                  })
+                })
+                console.log('📊 Progress tracked for word:', wordId)
+              } catch (error) {
+                console.error('Failed to track progress:', error)
+              }
+            }
+            
             setCurrentAudioStep('idle')
             setIsPlaying(false)
             return
@@ -1368,6 +1403,25 @@ export function LanguageSelector() {
         
         if (algenibSuccess) {
           console.log('✅ Algenib audio completed successfully')
+          
+          // Track word progress when audio is played successfully
+          if (user?.id && wordId && targetLanguageCode) {
+            try {
+              await fetch('/api/progress/track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: user.id,
+                  vocabularyId: wordId,
+                  targetLanguageCode: targetLanguageCode
+                })
+              })
+              console.log('📊 Progress tracked for word:', wordId)
+            } catch (error) {
+              console.error('Failed to track progress:', error)
+            }
+          }
+          
           setCurrentAudioStep('idle')
           setIsPlaying(false)
           return
@@ -1420,6 +1474,24 @@ export function LanguageSelector() {
       // Set to idle after completing this word
       setCurrentAudioStep('idle')
       setIsPlaying(false)
+      
+      // Track word progress for browser TTS fallback
+      if (user?.id && wordId && targetLanguageCode) {
+        try {
+          await fetch('/api/progress/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              vocabularyId: wordId,
+              targetLanguageCode: targetLanguageCode
+            })
+          })
+          console.log('📊 Progress tracked for word:', wordId)
+        } catch (error) {
+          console.error('Failed to track progress:', error)
+        }
+      }
 
     } catch (error) {
       console.error('Audio playback error:', error)
@@ -1484,6 +1556,7 @@ export function LanguageSelector() {
   const [currentOffset, setCurrentOffset] = useState<number>(0)
   const [hasMoreWords, setHasMoreWords] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [completedTopicIds, setCompletedTopicIds] = useState<number[]>([])
 
   // Smart preloading cache - load everything invisibly in background
   const [dataCache, setDataCache] = useState<{
@@ -1526,6 +1599,29 @@ export function LanguageSelector() {
     }
     loadData()
   }, [])
+
+  // Fetch completed topics when user and target language are available
+  useEffect(() => {
+    if (!user?.id || !targetLanguageCode) {
+      setCompletedTopicIds([])
+      return
+    }
+    
+    const fetchCompletedTopics = async () => {
+      try {
+        const response = await fetch(`/api/progress/topics?userId=${user.id}&targetLanguageCode=${targetLanguageCode}`)
+        if (response.ok) {
+          const data = await response.json()
+          setCompletedTopicIds(data.completedTopicIds || [])
+          console.log('📊 Completed topics loaded:', data.completedTopicIds)
+        }
+      } catch (error) {
+        console.error('Failed to fetch completed topics:', error)
+      }
+    }
+    
+    fetchCompletedTopics()
+  }, [user?.id, targetLanguageCode])
 
   // Smart background preloading - invisible to user
   const preloadVocabularyInBackground = async (nativeLang: string, targetLang: string) => {
@@ -2424,6 +2520,7 @@ export function LanguageSelector() {
                 setShowPaywall={setShowPaywall}
                 handleSignOut={handleSignOut}
                 getFlagIcon={getFlagIcon}
+                completedTopicIds={completedTopicIds}
               />
             </div>
 
