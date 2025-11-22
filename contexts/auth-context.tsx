@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { authService, AuthUser, UserProfile } from '@/lib/auth/auth-service'
-import { subscriptionService, UserSubscription } from '@/lib/subscription/clean-subscription-service'
+import { subscriptionService, UserSubscription } from '@/lib/subscription/subscription-service'
 
 interface AuthContextType {
   user: AuthUser | null
