@@ -85,6 +85,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   await subscriptionService.logSubscriptionEvent(
     userId,
     'checkout_completed',
+    'stripe',
     {
       sessionId: session.id,
       planId,
@@ -132,13 +133,15 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, stri
 
   await subscriptionService.logSubscriptionEvent(
     userId,
-    'subscription_created',
+    'subscription_updated',
+    'stripe',
     {
       subscriptionId: subscription.id,
       planId,
       status: subscription.status,
     }
   )
+} )
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription, stripe: Stripe) {
@@ -207,7 +210,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription, stri
 
   await subscriptionService.logSubscriptionEvent(
     userId,
-    'subscription_cancelled',
+    'subscription_deleted',
+    'stripe',
     {
       subscriptionId: subscription.id,
     }
@@ -235,6 +239,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, stripe: Stripe) {
   await subscriptionService.logSubscriptionEvent(
     userId,
     'payment_succeeded',
+    'stripe',
     {
       invoiceId: invoice.id,
       subscriptionId: subscription.id,
@@ -264,6 +269,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, stripe: Stripe) {
   await subscriptionService.logSubscriptionEvent(
     userId,
     'payment_failed',
+    'stripe',
     {
       invoiceId: inv.id,
       subscriptionId: sub.id,
