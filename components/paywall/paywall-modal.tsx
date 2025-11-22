@@ -55,43 +55,37 @@ export function PaywallModal({ isOpen, onCloseAction, onSubscriptionSuccess }: P
       setError(null)
       setLoading(planId)
 
-      console.log('Redirecting to Stripe Checkout...')
+      // Store current state before payment
+      storeCurrentState()
 
-      const response = await fetch('/api/stripe/checkout', {
+      console.log('Current localStorage state before payment:', {
+        nativeLanguage: localStorage.getItem('nativeLanguage'),
+        targetLanguage: localStorage.getItem('targetLanguage'),
+        currentPage: localStorage.getItem('currentPage')
+      })
+
+      const response = await fetch('/api/stripe/payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId, userId: user.id }),
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to create checkout session')
+      if (!response.ok) throw new Error(data.error || 'Failed to create payment intent')
 
-      // Redirect to Stripe Checkout
-      if (data.sessionUrl) {
-        window.location.href = data.sessionUrl
-      } else {
-        throw new Error('No checkout URL received')
-      }
+      setClientSecret(data.clientSecret)
+      setPaymentIntentId(data.paymentIntentId)
+      setShowCheckout(true)
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to start checkout')
+      setError(error instanceof Error ? error.message : 'Failed to start subscription')
       setLoading(null)
     }
   }
 
-  const handlePaymentSuccess = async () => {
-    console.log('💰 Payment succeeded, refreshing user status...')
+  const handlePaymentSuccess = () => {
     setLoading(null)
-    
-    // Wait a moment for webhook to process, then refresh
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Refresh the user's subscription status
-    if (onSubscriptionSuccess) {
-      await onSubscriptionSuccess()
-    }
-    
-    // Force reload to ensure fresh state
-    window.location.reload()
+    onSubscriptionSuccess?.()
+    onCloseAction()
   }
 
   const handlePaymentError = (error: string) => {

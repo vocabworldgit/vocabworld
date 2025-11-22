@@ -14,20 +14,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user from auth.users table
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
+    // Get user from Supabase - try both auth and profile tables
+    let user
+    let userError
     
-    if (authError || !authUser?.user) {
-      console.error('User lookup failed:', { userId, authError })
+    // First try to get from user_profiles
+    const { data: profileUser, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('email, full_name')
+      .eq('id', userId)
+      .single()
+
+    if (profileUser) {
+      user = profileUser
+    } else {
+      // If not found in profiles, try auth.users table
+      try {
+        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
+        if (authUser?.user) {
+          user = {
+            email: authUser.user.email,
+            full_name: authUser.user.user_metadata?.full_name || authUser.user.email
+          }
+        } else {
+          userError = authError
+        }
+      } catch (error) {
+        userError = error
+      }
+    }
+
+    if (!user) {
+      console.error('User lookup failed:', { userId, profileError, userError })
       return NextResponse.json(
         { error: 'User not found. Please make sure you are signed in.' },
         { status: 404 }
       )
-    }
-
-    const user = {
-      email: authUser.user.email,
-      full_name: authUser.user.user_metadata?.full_name || authUser.user.email
     }
 
     // Get plan configuration
@@ -58,111 +80,32 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create subscription with automatic payment collection
-    const subscriptionData: any = {
+    // Create payment intent
+    const paymentIntentData: any = {
+      amount: planConfig.amount,
+      currency: 'usd',
       customer: customer.id,
-      items: [{
-        price: planConfig.stripePriceId,
-      }],
-      payment_behavior: 'default_incomplete',
-      payment_settings: {
-        payment_method_types: ['card'],
-        save_default_payment_method: 'on_subscription',
-      },
-      expand: ['latest_invoice.payment_intent'],
+      payment_method_types: ['card'],
+      setup_future_usage: 'off_session',
       metadata: {
         userId,
         planId,
+        customerId: customer.id,
       },
     }
 
-    // Add trial if applicable
-    if (planConfig.trialDays && planConfig.trialDays > 0) {
-      subscriptionData.trial_period_days = planConfig.trialDays
-    }
-
-    const subscription = await stripe.subscriptions.create(subscriptionData)
-
-    console.log('✅ Subscription created:', {
-      id: subscription.id,
-      status: subscription.status,
-    })
-
-    // Get invoice and payment intent from expanded subscription
-    const invoice = (subscription as any).latest_invoice
-    let paymentIntent = invoice?.payment_intent
-
-    console.log('📄 Invoice details:', {
-      invoice_id: invoice?.id,
-      invoice_status: invoice?.status,
-      amount_due: invoice?.amount_due,
-      has_payment_intent: !!paymentIntent,
-    })
-
-    // Handle trial subscriptions with zero-amount invoices
-    if (invoice?.amount_due === 0) {
-      console.log('🆓 Zero-amount invoice (trial period), creating setup intent...')
-      const setupIntent = await stripe.setupIntents.create({
-        customer: customer.id,
-        payment_method_types: ['card'],
-        metadata: {
-          subscription_id: subscription.id,
-          user_id: userId
-        }
-      })
-      
-      return NextResponse.json({
-        clientSecret: setupIntent.client_secret,
-        subscriptionId: subscription.id,
-        customerId: customer.id,
-        setupMode: true
-      })
-    }
-
-    // If still no payment intent, finalize the invoice to create one
-    if (!paymentIntent && invoice) {
-      console.log('📝 Finalizing invoice to create payment intent...')
-      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
-        auto_advance: false,
-      })
-      
-      // Retrieve the payment intent created for this invoice
-      if ((finalizedInvoice as any).payment_intent) {
-        paymentIntent = await stripe.paymentIntents.retrieve(
-          (finalizedInvoice as any).payment_intent as string
-        )
-        console.log('✅ Payment intent created via finalization:', paymentIntent.id)
-      }
-    }
-
-    // If STILL no payment intent, something is wrong with Stripe's configuration
-    if (!paymentIntent || !paymentIntent.client_secret) {
-      console.error('❌ Could not get payment intent client secret')
-      throw new Error('Failed to initialize payment. Please contact support.')
-    }
-
-    console.log('✅ Payment intent ready:', {
-      id: paymentIntent.id,
-      status: paymentIntent.status,
-      has_client_secret: !!paymentIntent.client_secret
-    })
+    // For subscriptions, we'll create the subscription after payment succeeds
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentData)
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      subscriptionId: subscription.id,
-      customerId: customer.id,
       paymentIntentId: paymentIntent.id,
+      customerId: customer.id,
     })
-  } catch (error: any) {
-    console.error('❌ Stripe subscription error:', {
-      message: error.message,
-      type: error.type,
-      code: error.code,
-      param: error.param,
-      raw: error
-    })
+  } catch (error) {
+    console.error('Stripe payment intent error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create subscription' },
+      { error: 'Failed to create payment intent' },
       { status: 500 }
     )
   }

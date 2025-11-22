@@ -1,11 +1,5 @@
 -- Clean, simple subscription system
-
--- Drop old triggers and functions first
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
-
 -- Drop existing tables if they exist
-DROP TABLE IF EXISTS user_profiles CASCADE;
 DROP TABLE IF EXISTS subscription_events CASCADE;
 DROP TABLE IF EXISTS user_subscriptions CASCADE;
 
@@ -60,23 +54,3 @@ CREATE POLICY "Users can view own subscription"
 CREATE POLICY "Service role has full access"
   ON user_subscriptions FOR ALL
   USING (auth.role() = 'service_role');
-
--- Auto-create free subscription for new users
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.user_subscriptions (user_id, status)
-  VALUES (NEW.id, 'free');
-  RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
-  -- Log error but don't fail signup
-  RAISE WARNING 'Error creating subscription for %: %', NEW.id, SQLERRM;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger to create subscription when user signs up
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
