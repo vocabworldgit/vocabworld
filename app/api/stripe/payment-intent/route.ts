@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create subscription
+    // Create subscription with pending invoice
     const subscriptionData: any = {
       customer: customer.id,
       items: [{
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         payment_method_types: ['card'],
         save_default_payment_method: 'on_subscription',
       },
-      expand: ['latest_invoice.payment_intent'],
+      expand: ['latest_invoice'],
       metadata: {
         userId,
         planId,
@@ -89,21 +89,17 @@ export async function POST(request: NextRequest) {
       latest_invoice: subscription.latest_invoice
     })
 
-    // Get invoice and payment intent from expanded subscription
+    // Get invoice from expanded subscription
     const invoice = (subscription as any).latest_invoice
-    const paymentIntent = invoice?.payment_intent
 
     console.log('📄 Invoice from subscription:', {
       invoice_id: invoice?.id,
       invoice_status: invoice?.status,
       amount_due: invoice?.amount_due,
-      has_payment_intent: !!paymentIntent,
-      payment_intent_id: paymentIntent?.id,
-      payment_intent_status: paymentIntent?.status
     })
 
     // Handle trial subscriptions with zero-amount invoices
-    if (!paymentIntent && invoice?.amount_due === 0) {
+    if (invoice?.amount_due === 0) {
       console.log('🆓 Zero-amount invoice (trial period), creating setup intent...')
       const setupIntent = await stripe.setupIntents.create({
         customer: customer.id,
@@ -122,22 +118,33 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (!paymentIntent?.client_secret) {
-      console.error('❌ No payment intent client secret:', { 
+    // For non-zero invoices, manually create a payment intent
+    console.log('💳 Creating payment intent for invoice...')
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: invoice.amount_due,
+      currency: 'usd',
+      customer: customer.id,
+      metadata: {
         subscription_id: subscription.id,
-        invoice_status: invoice?.status,
-        amount_due: invoice?.amount_due,
-        paymentIntent
-      })
-      throw new Error('Failed to get payment intent client secret')
-    }
+        invoice_id: invoice.id,
+        user_id: userId
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    })
 
-    console.log('✅ Payment intent ready')
+    console.log('✅ Payment intent created:', {
+      id: paymentIntent.id,
+      status: paymentIntent.status,
+      has_client_secret: !!paymentIntent.client_secret
+    })
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       subscriptionId: subscription.id,
       customerId: customer.id,
+      paymentIntentId: paymentIntent.id,
     })
   } catch (error: any) {
     console.error('❌ Stripe subscription error:', {

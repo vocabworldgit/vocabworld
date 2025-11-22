@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
         await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
         break
 
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent)
+        break
+
       case 'invoice.payment_succeeded':
         await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
         break
@@ -65,6 +69,44 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log('✅ Checkout completed for user:', userId)
   console.log('   Session ID:', session.id)
   console.log('   Customer ID:', session.customer)
+}
+
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  const subscriptionId = paymentIntent.metadata?.subscription_id
+  const userId = paymentIntent.metadata?.user_id
+
+  if (!subscriptionId || !userId) {
+    console.log('⚠️  PaymentIntent not related to subscription')
+    return
+  }
+
+  console.log('💰 Payment intent succeeded')
+  console.log('   Payment Intent ID:', paymentIntent.id)
+  console.log('   Subscription ID:', subscriptionId)
+  console.log('   User ID:', userId)
+
+  // Fetch the subscription to get details
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2025-09-30.clover'
+  })
+  
+  const sub = await stripe.subscriptions.retrieve(subscriptionId)
+
+  // Activate premium
+  const isActive = sub.status === 'active' || sub.status === 'trialing' || sub.status === 'incomplete'
+  
+  if (isActive) {
+    await subscriptionService.activatePremium(
+      userId,
+      sub.customer as string,
+      sub.id,
+      new Date((sub as any).current_period_end * 1000)
+    )
+
+    console.log('✅ Premium activated via payment intent')
+    console.log('   User ID:', userId)
+    console.log('   Status:', sub.status)
+  }
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
