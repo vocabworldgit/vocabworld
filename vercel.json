@@ -1,21 +1,9 @@
 {
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key"
-  },
-  "build": {
-    "env": {
-      "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-      "STRIPE_SECRET_KEY": "@stripe_secret_key",
-      "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
-      "GOOGLE_APPLICATION_CREDENTIALS": "@google_application_credentials"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
@@ -25,12 +13,6 @@
         { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
         { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
     }
   ]
 }
