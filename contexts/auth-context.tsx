@@ -1,8 +1,19 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { authService, AuthUser, UserProfile } from '@/lib/auth/auth-service'
-import { subscriptionService, UserSubscription } from '@/lib/subscription/subscription-service'
+import { authService, AuthUser } from '@/lib/auth/auth-service'
+
+// Client-side subscription interface
+export interface UserSubscription {
+  id: string
+  user_id: string
+  status: 'free' | 'premium'
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  current_period_end: string | null
+  created_at: string
+  updated_at: string
+}
 
 interface AuthContextType {
   user: AuthUser | null
@@ -44,19 +55,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      // Get subscription status
-      const sub = await subscriptionService.getUserSubscription(user.id)
-      setSubscription(sub)
+      // Get subscription status via API
+      const response = await fetch(`/api/subscription/status?userId=${user.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSubscription(data.subscription)
+        setIsPremium(data.isPremium)
 
-      // Check if premium
-      const premium = await subscriptionService.isPremium(user.id)
-      setIsPremium(premium)
-
-      console.log('📊 User subscription status:', {
-        userId: user.id,
-        status: sub?.status,
-        isPremium: premium
-      })
+        console.log('📊 User subscription status:', {
+          userId: user.id,
+          status: data.subscription?.status,
+          isPremium: data.isPremium
+        })
+      }
     } catch (error) {
       console.error('Error refreshing user:', error)
     }
@@ -67,7 +78,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return { hasAccess: false, reason: 'Not authenticated' }
     }
 
-    return await subscriptionService.checkTopicAccess(user.id, topicId)
+    try {
+      const response = await fetch('/api/subscription/topic-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, topicId })
+      })
+      
+      if (response.ok) {
+        return await response.json()
+      }
+      
+      // Fallback: topic 1 is free
+      return {
+        hasAccess: topicId === 1,
+        reason: topicId === 1 ? undefined : 'Premium subscription required'
+      }
+    } catch (error) {
+      console.error('Error checking topic access:', error)
+      return {
+        hasAccess: topicId === 1,
+        reason: topicId === 1 ? undefined : 'Error checking access'
+      }
+    }
   }
 
   const signInWithGoogle = async () => {
@@ -98,18 +131,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setLoading(false)
 
           if (currentUser) {
-            // Get subscription for logged in user
-            const sub = await subscriptionService.getUserSubscription(currentUser.id)
-            const premium = await subscriptionService.isPremium(currentUser.id)
-            
-            setSubscription(sub)
-            setIsPremium(premium)
+            // Get subscription for logged in user via API
+            const response = await fetch(`/api/subscription/status?userId=${currentUser.id}`)
+            if (response.ok) {
+              const data = await response.json()
+              setSubscription(data.subscription)
+              setIsPremium(data.isPremium)
 
-            console.log('✅ Auth initialized:', {
-              email: currentUser.email,
-              status: sub?.status,
-              isPremium: premium
-            })
+              console.log('✅ Auth initialized:', {
+                email: currentUser.email,
+                status: data.subscription?.status,
+                isPremium: data.isPremium
+              })
+            }
           }
         }
       } catch (error) {
@@ -138,12 +172,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (mounted) {
             setUser(authUser)
             
-            // Get subscription
-            const sub = await subscriptionService.getUserSubscription(authUser.id)
-            const premium = await subscriptionService.isPremium(authUser.id)
-            
-            setSubscription(sub)
-            setIsPremium(premium)
+            // Get subscription via API
+            const response = await fetch(`/api/subscription/status?userId=${authUser.id}`)
+            if (response.ok) {
+              const data = await response.json()
+              setSubscription(data.subscription)
+              setIsPremium(data.isPremium)
+            }
           }
         } else if (mounted) {
           setUser(null)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { simpleSubscriptionService } from '@/lib/subscription/simple-subscription-service'
+import { subscriptionService } from '@/lib/subscription/subscription-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,15 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing userId or topicId' }, { status: 400 })
     }
 
-    const accessResult = await simpleSubscriptionService.checkTopicAccess(userId, topicId)
-    
-    // Log the access attempt
-    await simpleSubscriptionService.logTopicAccess(
-      userId,
-      topicId,
-      accessResult.hasAccess,
-      request.headers.get('user-agent') || 'unknown'
-    )
+    const accessResult = await subscriptionService.checkTopicAccess(userId, topicId)
     
     return NextResponse.json(accessResult)
   } catch (error) {

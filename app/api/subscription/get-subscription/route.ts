@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { simpleSubscriptionService } from '@/lib/subscription/simple-subscription-service'
+import { subscriptionService } from '@/lib/subscription/subscription-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
     }
 
-    const subscription = await simpleSubscriptionService.getUserSubscription(userId)
+    const subscription = await subscriptionService.getUserSubscription(userId)
     
     return NextResponse.json({ 
       subscription: subscription || null
