@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create subscription with proper payment settings
+    // Create subscription with automatic payment collection
     const subscriptionData: any = {
       customer: customer.id,
       items: [{
@@ -119,17 +119,26 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // If payment intent doesn't exist yet, Stripe will create it when payment method is provided
-    // For now, just return the subscription info and let the client handle payment
-    if (!paymentIntent) {
-      console.log('⚠️ No payment intent yet - will be created when payment method attached')
-      // Return a flag that tells the client to use a different approach
-      return NextResponse.json({
-        subscriptionId: subscription.id,
-        customerId: customer.id,
-        clientSecret: (subscription as any).latest_invoice?.payment_intent?.client_secret || null,
-        requiresPaymentMethod: true
+    // If still no payment intent, finalize the invoice to create one
+    if (!paymentIntent && invoice) {
+      console.log('📝 Finalizing invoice to create payment intent...')
+      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
+        auto_advance: false,
       })
+      
+      // Retrieve the payment intent created for this invoice
+      if ((finalizedInvoice as any).payment_intent) {
+        paymentIntent = await stripe.paymentIntents.retrieve(
+          (finalizedInvoice as any).payment_intent as string
+        )
+        console.log('✅ Payment intent created via finalization:', paymentIntent.id)
+      }
+    }
+
+    // If STILL no payment intent, something is wrong with Stripe's configuration
+    if (!paymentIntent || !paymentIntent.client_secret) {
+      console.error('❌ Could not get payment intent client secret')
+      throw new Error('Failed to initialize payment. Please contact support.')
     }
 
     console.log('✅ Payment intent ready:', {
