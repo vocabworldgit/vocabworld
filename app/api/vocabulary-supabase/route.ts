@@ -1,11 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 // Language code mapping from our translation database
 const getLanguageCode = (languageName: string): string => {
@@ -35,6 +29,7 @@ const getLanguageCode = (languageName: string): string => {
 };
 
 export async function GET(request: NextRequest) {
+  const supabase = getSupabaseClient()
   try {
     const { searchParams } = new URL(request.url);
     const topicId = searchParams.get('topicId');
