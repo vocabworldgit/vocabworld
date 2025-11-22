@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/auth-context'
 function SubscriptionSuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { refreshSubscription } = useAuth()
+  const { refreshUser } = useAuth()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -19,7 +19,7 @@ function SubscriptionSuccessContent() {
     if (sessionId) {
       const handleSuccess = async () => {
         try {
-          await refreshSubscription()
+          await refreshUser()
         } catch (error) {
           console.error('Error refreshing subscription:', error)
         } finally {
@@ -31,7 +31,7 @@ function SubscriptionSuccessContent() {
     } else {
       setLoading(false)
     }
-  }, [searchParams, refreshSubscription, router])
+  }, [searchParams, refreshUser, router])
 
   if (loading) {
     return (
