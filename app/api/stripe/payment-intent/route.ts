@@ -147,11 +147,6 @@ export async function POST(request: NextRequest) {
           enabled: true,
         },
       })
-      
-      // Update the invoice to use this payment intent
-      await stripe.invoices.update(finalizedInvoice.id, {
-        payment_intent: paymentIntent.id
-      })
     }
 
     console.log('✅ Payment intent ready:', {
