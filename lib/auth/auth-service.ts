@@ -326,11 +326,12 @@ class AuthService {
       return {
         user: {
           id: authUser.id,
-          email: authUser.email || null,
-          profile
+          email: authUser.email!,
+          fullName: authUser.user_metadata?.full_name || authUser.email!,
+          avatarUrl: authUser.user_metadata?.avatar_url
         },
         error: null,
-        isNewUser
+        isNewUser: false
       }
     } catch (error) {
       console.error('Auth callback error:', error)
