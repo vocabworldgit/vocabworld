@@ -103,14 +103,49 @@ export async function POST(request: NextRequest) {
 
     console.log('📄 Invoice retrieved:', {
       id: invoice.id,
-      payment_intent: typeof (invoice as any).payment_intent
+      status: invoice.status,
+      amount_due: invoice.amount_due,
+      payment_intent: (invoice as any).payment_intent ? 'exists' : 'missing',
+      payment_intent_type: typeof (invoice as any).payment_intent
     })
 
-    const paymentIntent = (invoice as any).payment_intent
+    let paymentIntent = (invoice as any).payment_intent
+
+    // If no payment intent exists, the invoice might need to be finalized
+    if (!paymentIntent && invoice.status === 'draft') {
+      console.log('Finalizing draft invoice...')
+      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoiceId, {
+        expand: ['payment_intent']
+      })
+      paymentIntent = (finalizedInvoice as any).payment_intent
+      console.log('Invoice finalized, payment_intent:', paymentIntent ? 'exists' : 'still missing')
+    }
+
+    // If still no payment intent but amount is 0 (trial), create a setup intent instead
+    if (!paymentIntent && invoice.amount_due === 0) {
+      console.log('Zero-amount invoice (trial), creating setup intent...')
+      const setupIntent = await stripe.setupIntents.create({
+        customer: customer.id,
+        payment_method_types: ['card'],
+        metadata: {
+          subscription_id: subscription.id,
+          user_id: userId
+        }
+      })
+      
+      return NextResponse.json({
+        clientSecret: setupIntent.client_secret,
+        subscriptionId: subscription.id,
+        customerId: customer.id,
+        setupMode: true
+      })
+    }
 
     if (!paymentIntent?.client_secret) {
-      console.error('❌ No client secret:', { 
+      console.error('❌ No client secret after all attempts:', { 
         invoiceId,
+        invoiceStatus: invoice.status,
+        amountDue: invoice.amount_due,
         paymentIntent
       })
       throw new Error('Failed to get payment intent client secret')
