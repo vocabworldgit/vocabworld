@@ -8,7 +8,7 @@ const nextConfig = {
   },
   images: {
     domains: ['lh3.googleusercontent.com', 'avatars.githubusercontent.com'],
-    unoptimized: false,
+    unoptimized: true,
   },
   // Server-side rendering for API routes
   experimental: {
