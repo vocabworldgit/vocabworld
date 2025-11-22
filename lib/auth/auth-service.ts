@@ -437,8 +437,9 @@ class AuthService {
 
       return {
         id: data.user.id,
-        email: data.user.email || null,
-        profile: profile || null
+        email: data.user.email!,
+        fullName: data.user.user_metadata?.full_name || data.user.email!,
+        avatarUrl: data.user.user_metadata?.avatar_url
       }
     } catch (error) {
       console.error('Error getting current user:', error)
