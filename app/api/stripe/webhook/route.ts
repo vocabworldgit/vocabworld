@@ -31,23 +31,23 @@ export async function POST(request: NextRequest) {
         break
 
       case 'customer.subscription.created':
-        await handleSubscriptionCreated(event.data.object as Stripe.Subscription)
+        await handleSubscriptionCreated(event.data.object as Stripe.Subscription, stripe)
         break
 
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription, stripe)
         break
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription, stripe)
         break
 
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
+        await handlePaymentSucceeded(event.data.object as Stripe.Invoice, stripe)
         break
 
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object as Stripe.Invoice)
+        await handlePaymentFailed(event.data.object as Stripe.Invoice, stripe)
         break
 
       default:
@@ -93,7 +93,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   )
 }
 
-async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
+async function handleSubscriptionCreated(subscription: Stripe.Subscription, stripe: Stripe) {
   const sub = subscription as any
   const userId = sub.metadata?.userId
   const planId = sub.metadata?.planId
@@ -134,7 +134,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   )
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription, stripe: Stripe) {
   const sub = subscription as any
   const userId = sub.metadata?.userId
   const planId = sub.metadata?.planId
@@ -174,7 +174,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   )
 }
 
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription, stripe: Stripe) {
   const sub = subscription as any
   const userId = sub.metadata?.userId
 
@@ -205,7 +205,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   )
 }
 
-async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
+async function handlePaymentSucceeded(invoice: Stripe.Invoice, stripe: Stripe) {
   const inv = invoice as any
   const subscription = await stripe.subscriptions.retrieve(inv.subscription as string)
   const sub = subscription as any
@@ -234,7 +234,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   )
 }
 
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
+async function handlePaymentFailed(invoice: Stripe.Invoice, stripe: Stripe) {
   const inv = invoice as any
   const subscription = await stripe.subscriptions.retrieve(inv.subscription as string)
   const sub = subscription as any
