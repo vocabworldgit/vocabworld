@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
         await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
         break
 
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
+        break
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
         await handleSubscriptionChange(event.data.object as Stripe.Subscription)
@@ -61,6 +65,48 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log('✅ Checkout completed for user:', userId)
   console.log('   Session ID:', session.id)
   console.log('   Customer ID:', session.customer)
+}
+
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  const subscription = invoice.subscription
+  
+  if (!subscription || typeof subscription !== 'string') {
+    console.log('⚠️  Invoice not related to subscription')
+    return
+  }
+
+  console.log('💰 Invoice payment succeeded')
+  console.log('   Invoice ID:', invoice.id)
+  console.log('   Subscription ID:', subscription)
+
+  // Fetch the subscription to get metadata
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2025-09-30.clover'
+  })
+  
+  const sub = await stripe.subscriptions.retrieve(subscription)
+  const userId = sub.metadata?.userId
+
+  if (!userId) {
+    console.error('❌ Missing userId in subscription metadata')
+    return
+  }
+
+  // Activate premium
+  const isActive = sub.status === 'active' || sub.status === 'trialing'
+  
+  if (isActive) {
+    await subscriptionService.activatePremium(
+      userId,
+      sub.customer as string,
+      sub.id,
+      new Date((sub as any).current_period_end * 1000)
+    )
+
+    console.log('✅ Premium activated via invoice payment')
+    console.log('   User ID:', userId)
+    console.log('   Status:', sub.status)
+  }
 }
 
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {

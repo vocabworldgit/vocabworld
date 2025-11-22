@@ -14,42 +14,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user from Supabase - try both auth and profile tables
-    let user
-    let userError
+    // Get user from auth.users table
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
     
-    // First try to get from user_profiles
-    const { data: profileUser, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('email, full_name')
-      .eq('id', userId)
-      .single()
-
-    if (profileUser) {
-      user = profileUser
-    } else {
-      // If not found in profiles, try auth.users table
-      try {
-        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
-        if (authUser?.user) {
-          user = {
-            email: authUser.user.email,
-            full_name: authUser.user.user_metadata?.full_name || authUser.user.email
-          }
-        } else {
-          userError = authError
-        }
-      } catch (error) {
-        userError = error
-      }
-    }
-
-    if (!user) {
-      console.error('User lookup failed:', { userId, profileError, userError })
+    if (authError || !authUser?.user) {
+      console.error('User lookup failed:', { userId, authError })
       return NextResponse.json(
         { error: 'User not found. Please make sure you are signed in.' },
         { status: 404 }
       )
+    }
+
+    const user = {
+      email: authUser.user.email,
+      full_name: authUser.user.user_metadata?.full_name || authUser.user.email
     }
 
     // Get plan configuration
@@ -80,32 +58,47 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create payment intent
-    const paymentIntentData: any = {
-      amount: planConfig.amount,
-      currency: 'usd',
+    // Create subscription (not payment intent!)
+    const subscriptionData: any = {
       customer: customer.id,
-      payment_method_types: ['card'],
-      setup_future_usage: 'off_session',
+      items: [{
+        price: planConfig.stripePriceId,
+      }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: {
+        payment_method_types: ['card'],
+        save_default_payment_method: 'on_subscription',
+      },
+      expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId,
         planId,
-        customerId: customer.id,
       },
     }
 
-    // For subscriptions, we'll create the subscription after payment succeeds
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentData)
+    // Add trial if applicable
+    if (planConfig.trialDays && planConfig.trialDays > 0) {
+      subscriptionData.trial_period_days = planConfig.trialDays
+    }
+
+    const subscription = await stripe.subscriptions.create(subscriptionData)
+
+    const invoice = subscription.latest_invoice as any
+    const paymentIntent = invoice?.payment_intent
+
+    if (!paymentIntent?.client_secret) {
+      throw new Error('Failed to create subscription payment intent')
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
+      subscriptionId: subscription.id,
       customerId: customer.id,
     })
   } catch (error) {
-    console.error('Stripe payment intent error:', error)
+    console.error('Stripe subscription error:', error)
     return NextResponse.json(
-      { error: 'Failed to create payment intent' },
+      { error: 'Failed to create subscription' },
       { status: 500 }
     )
   }
