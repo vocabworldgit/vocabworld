@@ -103,10 +103,10 @@ export async function POST(request: NextRequest) {
 
     console.log('📄 Invoice retrieved:', {
       id: invoice.id,
-      payment_intent: typeof invoice.payment_intent
+      payment_intent: typeof (invoice as any).payment_intent
     })
 
-    const paymentIntent = invoice.payment_intent as any
+    const paymentIntent = (invoice as any).payment_intent
 
     if (!paymentIntent?.client_secret) {
       console.error('❌ No client secret:', { 
