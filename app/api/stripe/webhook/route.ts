@@ -5,7 +5,7 @@ import { subscriptionService as _subscriptionService } from '@/lib/subscription/
 const subscriptionService = _subscriptionService as any
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-09-30.clover',
 })
 
 const supabase = createClient(
