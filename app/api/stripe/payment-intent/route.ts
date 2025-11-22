@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create subscription with pending invoice
+    // Create subscription with proper payment settings
     const subscriptionData: any = {
       customer: customer.id,
       items: [{
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         payment_method_types: ['card'],
         save_default_payment_method: 'on_subscription',
       },
-      expand: ['latest_invoice'],
+      expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId,
         planId,
@@ -86,16 +86,17 @@ export async function POST(request: NextRequest) {
     console.log('✅ Subscription created:', {
       id: subscription.id,
       status: subscription.status,
-      latest_invoice: subscription.latest_invoice
     })
 
-    // Get invoice from expanded subscription
+    // Get invoice and payment intent from expanded subscription
     const invoice = (subscription as any).latest_invoice
+    let paymentIntent = invoice?.payment_intent
 
-    console.log('📄 Invoice from subscription:', {
+    console.log('📄 Invoice details:', {
       invoice_id: invoice?.id,
       invoice_status: invoice?.status,
       amount_due: invoice?.amount_due,
+      has_payment_intent: !!paymentIntent,
     })
 
     // Handle trial subscriptions with zero-amount invoices
@@ -118,45 +119,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // For non-zero invoices, get or create the payment intent for the invoice
-    console.log('💳 Getting payment intent for invoice...', {
-      invoice_id: invoice.id,
-      invoice_status: invoice.status,
-      amount_due: invoice.amount_due
-    })
-    
-    let finalizedInvoice = invoice
-    
-    // Only finalize if invoice is still in draft status
-    if (invoice.status === 'draft') {
-      console.log('Finalizing draft invoice...')
-      finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
-        auto_advance: false, // Don't auto-charge, we'll collect payment manually
-      })
-    }
-
-    // Now get the payment intent that Stripe created for this invoice
-    let paymentIntent
-    if ((finalizedInvoice as any).payment_intent) {
-      console.log('Payment intent exists on invoice, retrieving...')
-      paymentIntent = await stripe.paymentIntents.retrieve(
-        (finalizedInvoice as any).payment_intent as string
-      )
-    } else {
-      // If no payment intent exists, create one for the invoice
-      console.log('No payment intent found, creating new one...')
-      paymentIntent = await stripe.paymentIntents.create({
-        amount: finalizedInvoice.amount_due,
-        currency: 'usd',
-        customer: customer.id,
-        metadata: {
-          subscription_id: subscription.id,
-          invoice_id: finalizedInvoice.id,
-          user_id: userId
-        },
-        automatic_payment_methods: {
-          enabled: true,
-        },
+    // If payment intent doesn't exist yet, Stripe will create it when payment method is provided
+    // For now, just return the subscription info and let the client handle payment
+    if (!paymentIntent) {
+      console.log('⚠️ No payment intent yet - will be created when payment method attached')
+      // Return a flag that tells the client to use a different approach
+      return NextResponse.json({
+        subscriptionId: subscription.id,
+        customerId: customer.id,
+        clientSecret: (subscription as any).latest_invoice?.payment_intent?.client_secret || null,
+        requiresPaymentMethod: true
       })
     }
 
