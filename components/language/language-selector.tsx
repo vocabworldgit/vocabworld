@@ -2418,7 +2418,6 @@ export function LanguageSelector() {
                 getTopicDisplayName={getTopicDisplayName}
                 isIOS={isIOS}
                 user={user}
-                profile={profile}
                 signOut={signOut}
                 nativeLanguage={nativeLanguage}
                 targetLanguage={targetLanguage}
