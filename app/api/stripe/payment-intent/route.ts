@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Create subscription (not payment intent!)
+    // Create subscription
     const subscriptionData: any = {
       customer: customer.id,
       items: [{
@@ -69,7 +69,6 @@ export async function POST(request: NextRequest) {
         payment_method_types: ['card'],
         save_default_payment_method: 'on_subscription',
       },
-      expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId,
         planId,
@@ -86,39 +85,38 @@ export async function POST(request: NextRequest) {
     console.log('✅ Subscription created:', {
       id: subscription.id,
       status: subscription.status,
-      latest_invoice: typeof subscription.latest_invoice
+      latest_invoice: subscription.latest_invoice
     })
 
-    const invoice = subscription.latest_invoice as any
-    console.log('📄 Invoice:', {
-      exists: !!invoice,
-      type: typeof invoice,
-      id: invoice?.id,
-      payment_intent: typeof invoice?.payment_intent
-    })
+    // Fetch the invoice with payment intent expanded
+    const invoiceId = typeof subscription.latest_invoice === 'string' 
+      ? subscription.latest_invoice 
+      : subscription.latest_invoice?.id
 
-    const paymentIntent = invoice?.payment_intent
-    console.log('💳 Payment Intent:', {
-      exists: !!paymentIntent,
-      type: typeof paymentIntent,
-      client_secret: paymentIntent?.client_secret ? 'exists' : 'missing',
-      raw: paymentIntent
-    })
-
-    if (!paymentIntent?.client_secret) {
-      console.error('❌ No client secret in payment intent:', { 
-        subscription: JSON.stringify(subscription, null, 2),
-        invoice: JSON.stringify(invoice, null, 2),
-        paymentIntent: JSON.stringify(paymentIntent, null, 2)
-      })
-      throw new Error('Failed to create subscription payment intent - no client secret')
+    if (!invoiceId) {
+      throw new Error('No invoice created for subscription')
     }
 
-    console.log('✅ Subscription created successfully:', {
-      subscriptionId: subscription.id,
-      status: subscription.status,
-      clientSecret: 'exists'
+    const invoice = await stripe.invoices.retrieve(invoiceId, {
+      expand: ['payment_intent']
     })
+
+    console.log('📄 Invoice retrieved:', {
+      id: invoice.id,
+      payment_intent: typeof invoice.payment_intent
+    })
+
+    const paymentIntent = invoice.payment_intent as any
+
+    if (!paymentIntent?.client_secret) {
+      console.error('❌ No client secret:', { 
+        invoiceId,
+        paymentIntent
+      })
+      throw new Error('Failed to get payment intent client secret')
+    }
+
+    console.log('✅ Payment intent ready')
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
