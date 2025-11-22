@@ -87,18 +87,31 @@ export async function POST(request: NextRequest) {
     const paymentIntent = invoice?.payment_intent
 
     if (!paymentIntent?.client_secret) {
+      console.error('❌ No client secret in payment intent:', { subscription, invoice, paymentIntent })
       throw new Error('Failed to create subscription payment intent')
     }
+
+    console.log('✅ Subscription created successfully:', {
+      subscriptionId: subscription.id,
+      status: subscription.status,
+      clientSecret: paymentIntent.client_secret ? 'exists' : 'missing'
+    })
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       subscriptionId: subscription.id,
       customerId: customer.id,
     })
-  } catch (error) {
-    console.error('Stripe subscription error:', error)
+  } catch (error: any) {
+    console.error('❌ Stripe subscription error:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      param: error.param,
+      raw: error
+    })
     return NextResponse.json(
-      { error: 'Failed to create subscription' },
+      { error: error.message || 'Failed to create subscription' },
       { status: 500 }
     )
   }
