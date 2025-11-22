@@ -2023,9 +2023,9 @@ export function LanguageSelector() {
       }
     } else {
       // Check authenticated user's topic access
-      const hasAccess = await checkTopicAccess(topic.id)
-      if (!hasAccess) {
-        console.log('❌ User does not have access to topic:', topic.id)
+      const accessResult = await checkTopicAccess(topic.id)
+      if (!accessResult.hasAccess) {
+        console.log('❌ User does not have access to topic:', topic.id, accessResult.reason)
         setShowPaywall(true)
         return
       }
