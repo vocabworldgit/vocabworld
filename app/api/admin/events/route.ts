@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const formattedEvents = events?.map(event => ({
       id: event.id,
       userId: event.user_id,
-      userEmail: event.user_profiles?.email || 'Unknown',
+      userEmail: (event.user_profiles as any)?.email || 'Unknown',
       eventType: event.event_type,
       eventData: event.event_data,
       createdAt: event.created_at
