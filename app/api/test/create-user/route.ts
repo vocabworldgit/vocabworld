@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { subscriptionService } from '@/lib/subscription/subscription-service'
+import { subscriptionService as _subscriptionService } from '@/lib/subscription/subscription-service'
+const subscriptionService = _subscriptionService as any
 
 export async function POST(request: NextRequest) {
   try {
