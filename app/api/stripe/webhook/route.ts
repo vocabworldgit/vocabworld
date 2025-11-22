@@ -1,28 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { subscriptionService as _subscriptionService } from '@/lib/subscription/subscription-service'
-import { getSupabaseServer, getStripeServer } from '@/lib/supabase-server'
-const subscriptionService = _subscriptionService as any
+import { subscriptionService } from '@/lib/subscription/clean-subscription-service'
 
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-11-20.acacia'
+})
+
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 export async function POST(request: NextRequest) {
-  const supabase = getSupabaseServer()
-  const stripe = getStripeServer()
   const body = await request.text()
-  const sig = request.headers.get('stripe-signature')!
+  const signature = request.headers.get('stripe-signature')!
 
   let event: Stripe.Event
 
+  // Verify webhook signature
   try {
-    event = stripe.webhooks.constructEvent(body, sig, endpointSecret)
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err)
-    return NextResponse.json(
-      { error: 'Invalid signature' },
-      { status: 400 }
-    )
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+  } catch (err: any) {
+    console.error('❌ Webhook signature verification failed:', err.message)
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
+
+  console.log('🔔 Webhook received:', event.type)
 
   try {
     switch (event.type) {
@@ -31,23 +31,12 @@ export async function POST(request: NextRequest) {
         break
 
       case 'customer.subscription.created':
-        await handleSubscriptionCreated(event.data.object as Stripe.Subscription, stripe)
-        break
-
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription, stripe)
+        await handleSubscriptionChange(event.data.object as Stripe.Subscription)
         break
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription, stripe)
-        break
-
-      case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object as Stripe.Invoice, stripe)
-        break
-
-      case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object as Stripe.Invoice, stripe)
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
         break
 
       default:
@@ -55,227 +44,65 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ received: true })
-  } catch (error) {
-    console.error('Webhook error:', error)
-    return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    console.error('❌ Webhook processing error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId
-  const planId = session.metadata?.planId
 
-  if (!userId || !planId) {
-    console.error('Missing metadata in checkout session')
+  if (!userId) {
+    console.error('❌ Missing userId in checkout session metadata')
     return
   }
 
-  console.log('✅ STRIPE WEBHOOK: Checkout completed', {
-    sessionId: session.id,
-    userId,
-    planId,
-    amount: session.amount_total,
-  })
-
-  // The subscription will be handled by subscription.created event
-  // This is mainly for logging the successful checkout
-  await subscriptionService.logSubscriptionEvent(
-    userId,
-    'checkout_completed',
-    'stripe',
-    {
-      sessionId: session.id,
-      planId,
-      amount: session.amount_total,
-    }
-  )
+  console.log('✅ Checkout completed for user:', userId)
+  console.log('   Session ID:', session.id)
+  console.log('   Customer ID:', session.customer)
 }
 
-async function handleSubscriptionCreated(subscription: Stripe.Subscription, stripe: Stripe) {
-  const sub = subscription as any
-  const userId = sub.metadata?.userId
-  const planId = sub.metadata?.planId
+async function handleSubscriptionChange(subscription: Stripe.Subscription) {
+  const userId = subscription.metadata?.userId
 
-  if (!userId || !planId) {
-    console.error('Missing metadata in subscription')
+  if (!userId) {
+    console.error('❌ Missing userId in subscription metadata')
     return
   }
 
-  console.log('✅ STRIPE WEBHOOK: Subscription created', {
-    subscriptionId: sub.id,
-    userId,
-    planId,
-    status: sub.status,
-  })
+  const isActive = subscription.status === 'active' || subscription.status === 'trialing'
 
-  const status = sub.status === 'trialing' ? 'trialing' : 
-                 sub.status === 'active' ? 'active' : 'pending'
-
-  try {
-    const result = await subscriptionService.upsertUserSubscription({
+  if (isActive) {
+    // Activate premium
+    await subscriptionService.activatePremium(
       userId,
-      stripeSubscriptionId: sub.id,
-      stripeCustomerId: sub.customer as string,
-      status,
-      planType: planId as 'monthly' | 'yearly',
-      currentPeriodStart: new Date(sub.current_period_start * 1000),
-      currentPeriodEnd: new Date(sub.current_period_end * 1000),
-      trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-      premiumFeaturesEnabled: true,
-    })
-    console.log('✅ Subscription upserted successfully:', result)
-  } catch (error) {
-    console.error('❌ Error upserting subscription:', error)
-    throw error
-  }
+      subscription.customer as string,
+      subscription.id,
+      new Date(subscription.current_period_end * 1000)
+    )
 
-  await subscriptionService.logSubscriptionEvent(
-    userId,
-    'subscription_updated',
-    'stripe',
-    {
-      subscriptionId: subscription.id,
-      planId,
-      status: subscription.status,
-    }
-  )
+    console.log('✅ Premium activated')
+    console.log('   User ID:', userId)
+    console.log('   Subscription ID:', subscription.id)
+    console.log('   Status:', subscription.status)
+    console.log('   Period end:', new Date(subscription.current_period_end * 1000))
+  } else {
+    console.log('⚠️  Subscription not active:', subscription.status)
+  }
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription, stripe: Stripe) {
-  const sub = subscription as any
-  const userId = sub.metadata?.userId
-  const planId = sub.metadata?.planId
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const userId = subscription.metadata?.userId
 
   if (!userId) {
-    console.error('Missing userId in subscription metadata')
+    console.error('❌ Missing userId in subscription metadata')
     return
   }
 
-  console.log('🔄 STRIPE WEBHOOK: Subscription updated', {
-    subscriptionId: sub.id,
-    userId,
-    status: sub.status,
-  })
+  await subscriptionService.cancelSubscription(userId)
 
-  const status = sub.status === 'trialing' ? 'trialing' : 
-                 sub.status === 'active' ? 'active' : 
-                 sub.status === 'canceled' ? 'cancelled' : 'pending'
-
-  await subscriptionService.upsertUserSubscription({
-    userId,
-    stripeSubscriptionId: sub.id,
-    stripeCustomerId: sub.customer as string,
-    status,
-    planType: planId as 'monthly' | 'yearly',
-    currentPeriodStart: new Date(sub.current_period_start * 1000),
-    currentPeriodEnd: new Date(sub.current_period_end * 1000),
-    trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-    premiumFeaturesEnabled: status === 'active' || status === 'trialing',
-  })
-
-  await subscriptionService.logSubscriptionEvent(
-    userId,
-    'subscription_updated',
-    {
-      subscriptionId: sub.id,
-      status: sub.status,
-    }
-  )
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription, stripe: Stripe) {
-  const sub = subscription as any
-  const userId = sub.metadata?.userId
-
-  if (!userId) {
-    console.error('Missing userId in subscription metadata')
-    return
-  }
-
-  console.log('❌ STRIPE WEBHOOK: Subscription deleted', {
-    subscriptionId: sub.id,
-    userId,
-  })
-
-  await subscriptionService.upsertUserSubscription({
-    userId,
-    stripeSubscriptionId: sub.id,
-    stripeCustomerId: sub.customer as string,
-    status: 'cancelled',
-    currentPeriodStart: new Date(sub.current_period_start * 1000),
-    currentPeriodEnd: new Date(sub.current_period_end * 1000),
-    premiumFeaturesEnabled: false,
-  })
-
-  await subscriptionService.logSubscriptionEvent(
-    userId,
-    'subscription_deleted',
-    'stripe',
-    {
-      subscriptionId: subscription.id,
-    }
-  )
-}
-
-async function handlePaymentSucceeded(invoice: Stripe.Invoice, stripe: Stripe) {
-  const inv = invoice as any
-  const subscription = await stripe.subscriptions.retrieve(inv.subscription as string)
-  const sub = subscription as any
-  const userId = sub.metadata?.userId
-
-  if (!userId) {
-    console.error('Missing userId in subscription metadata')
-    return
-  }
-
-  console.log('💰 STRIPE WEBHOOK: Payment succeeded', {
-    invoiceId: invoice.id,
-    subscriptionId: subscription.id,
-    userId,
-    amount: invoice.amount_paid,
-  })
-
-  await subscriptionService.logSubscriptionEvent(
-    userId,
-    'payment_succeeded',
-    'stripe',
-    {
-      invoiceId: invoice.id,
-      subscriptionId: subscription.id,
-      amount: invoice.amount_paid,
-    }
-  )
-}
-
-async function handlePaymentFailed(invoice: Stripe.Invoice, stripe: Stripe) {
-  const inv = invoice as any
-  const subscription = await stripe.subscriptions.retrieve(inv.subscription as string)
-  const sub = subscription as any
-  const userId = sub.metadata?.userId
-
-  if (!userId) {
-    console.error('Missing userId in subscription metadata')
-    return
-  }
-
-  console.log('💳 STRIPE WEBHOOK: Payment failed', {
-    invoiceId: inv.id,
-    subscriptionId: sub.id,
-    userId,
-    amount: inv.amount_due,
-  })
-
-  await subscriptionService.logSubscriptionEvent(
-    userId,
-    'payment_failed',
-    'stripe',
-    {
-      invoiceId: inv.id,
-      subscriptionId: sub.id,
-      amount: inv.amount_due,
-    }
-  )
+  console.log('✅ Subscription canceled')
+  console.log('   User ID:', userId)
+  console.log('   Subscription ID:', subscription.id)
 }
