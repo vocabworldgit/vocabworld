@@ -447,8 +447,8 @@ class AuthService {
     }
   }
 
-  // Update user profile
-  async updateProfile(updates: Partial<UserProfile>): Promise<UserProfile | null> {
+  // Update user profile - DEPRECATED in clean version
+  /* async updateProfile(updates: Partial<UserProfile>): Promise<UserProfile | null> {
     try {
       const user = await this.getCurrentUser()
       if (false) {
@@ -472,7 +472,7 @@ class AuthService {
       console.error('Error in updateProfile:', error)
       return null
     }
-  }
+  } */
 
   // Sign out
   async signOut(): Promise<{ error: string | null }> {
