@@ -113,16 +113,22 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, stri
   const status = sub.status === 'trialing' ? 'trialing' : 
                  sub.status === 'active' ? 'active' : 'pending'
 
-  await subscriptionService.upsertUserSubscription({
-    userId,
-    stripeSubscriptionId: sub.id,
-    stripeCustomerId: sub.customer as string,
-    status,
-    planType: planId as 'monthly' | 'yearly',
-    currentPeriodStart: new Date(sub.current_period_start * 1000),
-    currentPeriodEnd: new Date(sub.current_period_end * 1000),
-    trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
-  })
+  try {
+    const result = await subscriptionService.upsertUserSubscription({
+      userId,
+      stripeSubscriptionId: sub.id,
+      stripeCustomerId: sub.customer as string,
+      status,
+      planType: planId as 'monthly' | 'yearly',
+      currentPeriodStart: new Date(sub.current_period_start * 1000),
+      currentPeriodEnd: new Date(sub.current_period_end * 1000),
+      trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
+    })
+    console.log('✅ Subscription upserted successfully:', result)
+  } catch (error) {
+    console.error('❌ Error upserting subscription:', error)
+    throw error
+  }
 
   await subscriptionService.logSubscriptionEvent(
     userId,
