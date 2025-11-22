@@ -55,7 +55,7 @@ export interface AppleAuthResult {
 }
 
 class AuthService {
-  private supabase = createClientComponentClient()
+  public supabase = createClientComponentClient()
 
   // Platform detection
   isIOS(): boolean {
