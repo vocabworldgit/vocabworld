@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
         subscription_id: subscription.id,
         invoice_status: invoice?.status,
         amount_due: invoice?.amount_due,
-        payment_intent
+        paymentIntent
       })
       throw new Error('Failed to get payment intent client secret')
     }
