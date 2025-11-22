@@ -74,6 +74,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   const subscriptionId = paymentIntent.metadata?.subscription_id
   const userId = paymentIntent.metadata?.user_id
+  const invoiceId = paymentIntent.metadata?.invoice_id
 
   if (!subscriptionId || !userId) {
     console.log('⚠️  PaymentIntent not related to subscription')
@@ -83,6 +84,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
   console.log('💰 Payment intent succeeded')
   console.log('   Payment Intent ID:', paymentIntent.id)
   console.log('   Subscription ID:', subscriptionId)
+  console.log('   Invoice ID:', invoiceId)
   console.log('   User ID:', userId)
 
   // Fetch the subscription to get details
@@ -90,7 +92,23 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
     apiVersion: '2025-09-30.clover'
   })
   
+  // If we have an invoice ID, mark it as paid
+  if (invoiceId) {
+    try {
+      console.log('📝 Paying invoice:', invoiceId)
+      await stripe.invoices.pay(invoiceId, {
+        paid_out_of_band: true // Mark as paid since we collected payment separately
+      })
+      console.log('✅ Invoice marked as paid')
+    } catch (error: any) {
+      console.error('❌ Failed to pay invoice:', error.message)
+      // Continue anyway, we'll still activate premium
+    }
+  }
+  
   const sub = await stripe.subscriptions.retrieve(subscriptionId)
+
+  console.log('📊 Subscription status:', sub.status)
 
   // Activate premium
   const isActive = sub.status === 'active' || sub.status === 'trialing' || sub.status === 'incomplete'
@@ -106,6 +124,8 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent)
     console.log('✅ Premium activated via payment intent')
     console.log('   User ID:', userId)
     console.log('   Status:', sub.status)
+  } else {
+    console.log('⚠️  Subscription not in active state:', sub.status)
   }
 }
 
