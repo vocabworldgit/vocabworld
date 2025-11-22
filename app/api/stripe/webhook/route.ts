@@ -68,7 +68,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscription = invoice.subscription
+  const subscription = (invoice as any).subscription
   
   if (!subscription || typeof subscription !== 'string') {
     console.log('⚠️  Invoice not related to subscription')
