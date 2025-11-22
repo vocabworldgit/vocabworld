@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { subscriptionService } from '@/lib/subscription/subscription-service'
 
+const service = subscriptionService as any
+
 export async function POST(request: NextRequest) {
   try {
     const { userId, action, data } = await request.json()
@@ -20,7 +22,7 @@ export async function POST(request: NextRequest) {
         const days = data?.days || 30
         const planType = data?.planType || 'yearly'
         
-        result = await (subscriptionService as any).upsertUserSubscription(userId, {
+        result = await service.upsertUserSubscription(userId, {
           status: 'active',
           planType: planType as 'monthly' | 'yearly',
           currentPeriodStart: new Date(),
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
           stripeCustomerId: `admin_customer_${userId.slice(0, 8)}`,
         })
 
-        await (subscriptionService as any).logSubscriptionEvent(
+        await service.logSubscriptionEvent(
           userId,
           'access_granted',
           'manual'
@@ -38,30 +40,30 @@ export async function POST(request: NextRequest) {
 
       case 'cancel':
         // Cancel subscription
-        result = await subscriptionService.upsertUserSubscription(userId, {
+        result = await service.upsertUserSubscription(userId, {
           status: 'cancelled',
           currentPeriodEnd: new Date(), // End immediately
         })
 
-        await subscriptionService.logSubscriptionEvent(
+        await service.logSubscriptionEvent(
           userId,
-          'admin_cancel_subscription',
-          { cancelledBy: 'admin' }
+          'access_revoked',
+          'manual'
         )
         break
 
       case 'reactivate':
         // Reactivate subscription for 30 days
-        result = await subscriptionService.upsertUserSubscription(userId, {
+        result = await service.upsertUserSubscription(userId, {
           status: 'active',
           currentPeriodStart: new Date(),
           currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         })
 
-        await subscriptionService.logSubscriptionEvent(
+        await service.logSubscriptionEvent(
           userId,
-          'admin_reactivate_subscription',
-          { reactivatedBy: 'admin' }
+          'access_granted',
+          'manual'
         )
         break
 
