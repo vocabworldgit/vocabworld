@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         payment_method_types: ['card'],
         save_default_payment_method: 'on_subscription',
       },
+      expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId,
         planId,
@@ -88,42 +89,22 @@ export async function POST(request: NextRequest) {
       latest_invoice: subscription.latest_invoice
     })
 
-    // Fetch the invoice with payment intent expanded
-    const invoiceId = typeof subscription.latest_invoice === 'string' 
-      ? subscription.latest_invoice 
-      : subscription.latest_invoice?.id
+    // Get invoice and payment intent from expanded subscription
+    const invoice = (subscription as any).latest_invoice
+    const paymentIntent = invoice?.payment_intent
 
-    if (!invoiceId) {
-      throw new Error('No invoice created for subscription')
-    }
-
-    const invoice = await stripe.invoices.retrieve(invoiceId, {
-      expand: ['payment_intent']
+    console.log('📄 Invoice from subscription:', {
+      invoice_id: invoice?.id,
+      invoice_status: invoice?.status,
+      amount_due: invoice?.amount_due,
+      has_payment_intent: !!paymentIntent,
+      payment_intent_id: paymentIntent?.id,
+      payment_intent_status: paymentIntent?.status
     })
 
-    console.log('📄 Invoice retrieved:', {
-      id: invoice.id,
-      status: invoice.status,
-      amount_due: invoice.amount_due,
-      payment_intent: (invoice as any).payment_intent ? 'exists' : 'missing',
-      payment_intent_type: typeof (invoice as any).payment_intent
-    })
-
-    let paymentIntent = (invoice as any).payment_intent
-
-    // If no payment intent exists, the invoice might need to be finalized
-    if (!paymentIntent && invoice.status === 'draft') {
-      console.log('Finalizing draft invoice...')
-      const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoiceId, {
-        expand: ['payment_intent']
-      })
-      paymentIntent = (finalizedInvoice as any).payment_intent
-      console.log('Invoice finalized, payment_intent:', paymentIntent ? 'exists' : 'still missing')
-    }
-
-    // If still no payment intent but amount is 0 (trial), create a setup intent instead
-    if (!paymentIntent && invoice.amount_due === 0) {
-      console.log('Zero-amount invoice (trial), creating setup intent...')
+    // Handle trial subscriptions with zero-amount invoices
+    if (!paymentIntent && invoice?.amount_due === 0) {
+      console.log('🆓 Zero-amount invoice (trial period), creating setup intent...')
       const setupIntent = await stripe.setupIntents.create({
         customer: customer.id,
         payment_method_types: ['card'],
@@ -142,11 +123,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!paymentIntent?.client_secret) {
-      console.error('❌ No client secret after all attempts:', { 
-        invoiceId,
-        invoiceStatus: invoice.status,
-        amountDue: invoice.amount_due,
-        paymentIntent
+      console.error('❌ No payment intent client secret:', { 
+        subscription_id: subscription.id,
+        invoice_status: invoice?.status,
+        amount_due: invoice?.amount_due,
+        payment_intent
       })
       throw new Error('Failed to get payment intent client secret')
     }
