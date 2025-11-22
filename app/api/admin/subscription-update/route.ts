@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         const days = data?.days || 30
         const planType = data?.planType || 'yearly'
         
-        result = await subscriptionService.upsertUserSubscription(userId, {
+        result = await (subscriptionService as any).upsertUserSubscription(userId, {
           status: 'active',
           planType: planType as 'monthly' | 'yearly',
           currentPeriodStart: new Date(),
