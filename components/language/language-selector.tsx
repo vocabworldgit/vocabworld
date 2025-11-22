@@ -403,9 +403,9 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                     {/* User Profile Info */}
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
-                        {(profile?.avatar_url || user?.profile?.avatar_url) ? (
+                        {user?.avatarUrl ? (
                           <img 
-                            src={profile?.avatar_url || user?.profile?.avatar_url} 
+                            src={user.avatarUrl} 
                             alt="Profile" 
                             className="w-full h-full object-cover rounded-full"
                           />
@@ -415,7 +415,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                       </div>
                       <div>
                         <h3 className="text-white font-semibold text-lg">
-                          {profile?.full_name || user?.profile?.full_name || user?.email?.split('@')[0] || 'User'}
+                          {user?.fullName || user?.email?.split('@')[0] || 'User'}
                         </h3>
                         <p className="text-white/70 text-sm">{user?.email}</p>
                       </div>
