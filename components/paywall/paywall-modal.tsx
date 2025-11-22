@@ -78,10 +78,20 @@ export function PaywallModal({ isOpen, onCloseAction, onSubscriptionSuccess }: P
     }
   }
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async () => {
+    console.log('💰 Payment succeeded, refreshing user status...')
     setLoading(null)
-    onSubscriptionSuccess?.()
-    onCloseAction()
+    
+    // Wait a moment for webhook to process, then refresh
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Refresh the user's subscription status
+    if (onSubscriptionSuccess) {
+      await onSubscriptionSuccess()
+    }
+    
+    // Force reload to ensure fresh state
+    window.location.reload()
   }
 
   const handlePaymentError = (error: string) => {
