@@ -1396,11 +1396,12 @@ export function LanguageSelector() {
           
           console.log('🎵 Alnilam playWordSequence returned:', alnilamSuccess)
           
-          // Check if stop was requested during playback
+          // Check if stop was requested during playback - EXIT IMMEDIATELY
           if (stopRequestedRef.current) {
-            console.log('🛑 Stop requested during Alnilam playback - cleaning up');
+            console.log('🛑 Stop requested during Alnilam playback - cleaning up and exiting');
             setCurrentAudioStep('idle')
             setIsPlaying(false)
+            audioCallInProgress.current = false
             return
           }
           
@@ -1460,11 +1461,12 @@ export function LanguageSelector() {
           }
         )
         
-        // Check if stop was requested during playback
+        // Check if stop was requested during playback - EXIT IMMEDIATELY
         if (stopRequestedRef.current) {
-          console.log('🛑 Stop requested during Algenib playback - cleaning up');
+          console.log('🛑 Stop requested during Algenib playback - cleaning up and exiting');
           setCurrentAudioStep('idle')
           setIsPlaying(false)
+          audioCallInProgress.current = false
           return
         }
         
@@ -1891,16 +1893,21 @@ export function LanguageSelector() {
     
     console.log('Starting auto-play from word', currentWordIndex + 1)
     autoPlayRef.current = true // Enable auto-play loop
+    stopRequestedRef.current = false // Reset stop flag at start
     
     for (let i = currentWordIndex; i < vocabulary.length; i++) {
       // Check if auto-play was cancelled - EARLY EXIT
-      if (!autoPlayRef.current) {
-        console.log('Auto-play cancelled by user - stopping loop')
+      if (!autoPlayRef.current || stopRequestedRef.current) {
+        console.log('Auto-play cancelled by user - stopping loop', { 
+          autoPlayRef: autoPlayRef.current, 
+          stopRequested: stopRequestedRef.current 
+        })
         // Reset states before exiting
         setIsPlaying(false)
         setCurrentAudioStep('idle')
         setAutoPlayActive(false)
         stopRequestedRef.current = false // Reset stop flag
+        autoPlayRef.current = false
         return // Exit immediately
       }
       
@@ -1916,13 +1923,17 @@ export function LanguageSelector() {
       await playAudio(word, false)
       
       // Check again if auto-play was cancelled during playback - EARLY EXIT
-      if (!autoPlayRef.current) {
-        console.log('Auto-play cancelled during playback - stopping loop')
+      if (!autoPlayRef.current || stopRequestedRef.current) {
+        console.log('Auto-play cancelled during playback - stopping loop', {
+          autoPlayRef: autoPlayRef.current,
+          stopRequested: stopRequestedRef.current
+        })
         // Reset states before exiting
         setIsPlaying(false)
         setCurrentAudioStep('idle')
         setAutoPlayActive(false)
         stopRequestedRef.current = false // Reset stop flag
+        autoPlayRef.current = false
         return // Exit immediately
       }
       
@@ -1932,12 +1943,16 @@ export function LanguageSelector() {
         await sleep(settings.pauseForNextWord * 1000)
         
         // Check one more time after pause - EARLY EXIT
-        if (!autoPlayRef.current) {
-          console.log('Auto-play cancelled during pause - stopping loop')
+        if (!autoPlayRef.current || stopRequestedRef.current) {
+          console.log('Auto-play cancelled during pause - stopping loop', {
+            autoPlayRef: autoPlayRef.current,
+            stopRequested: stopRequestedRef.current
+          })
           setIsPlaying(false)
           setCurrentAudioStep('idle')
           setAutoPlayActive(false)
           stopRequestedRef.current = false // Reset stop flag
+          autoPlayRef.current = false
           return // Exit immediately
         }
       }
