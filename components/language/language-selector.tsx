@@ -1919,6 +1919,20 @@ export function LanguageSelector() {
       // Update the display
       setCurrentWordIndex(i)
       
+      // CRITICAL: Check stop flags immediately after updating display
+      if (!autoPlayRef.current || stopRequestedRef.current) {
+        console.log('Auto-play cancelled after display update - stopping loop', {
+          autoPlayRef: autoPlayRef.current,
+          stopRequested: stopRequestedRef.current
+        })
+        setIsPlaying(false)
+        setCurrentAudioStep('idle')
+        setAutoPlayActive(false)
+        stopRequestedRef.current = false
+        autoPlayRef.current = false
+        return
+      }
+      
       // Play the word
       await playAudio(word, false)
       
