@@ -921,9 +921,15 @@ export function LanguageSelector() {
               sourceWord, targetWord, sourceLanguage, targetLanguage, wordId
             });
 
+            // Get abort signal from the current autoplay session
+            const abortSignal = autoplayAbortController.current?.signal;
+
             try {
-              // Reset stop flag
-              stopRequestedRef.current = false;
+              // Check abort at entry
+              if (abortSignal?.aborted || stopRequestedRef.current) {
+                console.log('🛑 Playback aborted at entry');
+                return false;
+              }
               
               // Clear any existing audio elements
               audioElementsRef.current.forEach(audio => {
@@ -956,7 +962,102 @@ export function LanguageSelector() {
 
               console.log(`🌟 Playing Alnilam audio: TARGET FIRST ${targetWord} (${targetLangCode}) → THEN SOURCE ${sourceWord} (${sourceLangCode})`);
 
-              // CRITICAL FIX: Enable audio context for autoplay policy
+              // Helper function: Interruptible sleep that respects abort signal
+              const abortableSleep = (ms: number): Promise<void> => {
+                return new Promise((resolve, reject) => {
+                  const timeoutId = setTimeout(() => resolve(), ms);
+                  
+                  // If abort signal exists, listen for abort
+                  if (abortSignal) {
+                    const abortHandler = () => {
+                      clearTimeout(timeoutId);
+                      reject(new DOMException('Sleep aborted', 'AbortError'));
+                    };
+                    abortSignal.addEventListener('abort', abortHandler, { once: true });
+                  }
+                  
+                  // Also check stopRequestedRef
+                  const checkInterval = setInterval(() => {
+                    if (stopRequestedRef.current || abortSignal?.aborted) {
+                      clearTimeout(timeoutId);
+                      clearInterval(checkInterval);
+                      reject(new DOMException('Sleep aborted', 'AbortError'));
+                    }
+                  }, 50); // Check every 50ms
+                  
+                  // Clean up interval when done
+                  setTimeout(() => clearInterval(checkInterval), ms);
+                });
+              };
+
+              // Helper function: Play audio with abort support
+              const playAudioWithAbort = (audio: HTMLAudioElement, description: string): Promise<void> => {
+                return new Promise((resolve, reject) => {
+                  // Check abort before starting
+                  if (abortSignal?.aborted || stopRequestedRef.current) {
+                    reject(new DOMException('Audio playback aborted', 'AbortError'));
+                    return;
+                  }
+
+                  const timeout = setTimeout(() => {
+                    reject(new Error(`Audio timeout for ${description}`));
+                  }, 10000);
+                  
+                  const cleanup = () => {
+                    clearTimeout(timeout);
+                    audioElementsRef.current = audioElementsRef.current.filter(a => a !== audio);
+                  };
+                  
+                  audio.onended = () => {
+                    cleanup();
+                    resolve();
+                  };
+                  
+                  audio.onerror = (error) => {
+                    cleanup();
+                    reject(error);
+                  };
+                  
+                  audio.oncanplaythrough = () => {
+                    // Double-check abort before playing
+                    if (abortSignal?.aborted || stopRequestedRef.current) {
+                      cleanup();
+                      reject(new DOMException('Audio playback aborted', 'AbortError'));
+                      return;
+                    }
+                    audio.play().catch(reject);
+                  };
+                  
+                  // Listen for abort signal during playback
+                  if (abortSignal) {
+                    abortSignal.addEventListener('abort', () => {
+                      audio.pause();
+                      audio.src = '';
+                      cleanup();
+                      reject(new DOMException('Audio playback aborted', 'AbortError'));
+                    }, { once: true });
+                  }
+                  
+                  // Also poll stopRequestedRef during playback
+                  const checkInterval = setInterval(() => {
+                    if (stopRequestedRef.current || abortSignal?.aborted) {
+                      clearInterval(checkInterval);
+                      audio.pause();
+                      audio.src = '';
+                      cleanup();
+                      reject(new DOMException('Audio playback aborted', 'AbortError'));
+                    }
+                  }, 100);
+                  
+                  audio.addEventListener('ended', () => clearInterval(checkInterval), { once: true });
+                  audio.addEventListener('error', () => clearInterval(checkInterval), { once: true });
+                  
+                  // Load the audio
+                  audio.load();
+                });
+              };
+
+              // CRITICAL: Enable audio context for autoplay policy
               try {
                 // Try to resume AudioContext if it's suspended (autoplay policy)
                 if (typeof window !== 'undefined' && window.AudioContext) {
@@ -1045,79 +1146,49 @@ export function LanguageSelector() {
                 // FIXED MAPPING: Target language repeats (what user is learning)
                 const targetRepeats = settings?.repeatTargetLanguage || 1;
                 for (let i = 0; i < targetRepeats; i++) {
-                  // Check if stop was requested
-                  if (stopRequestedRef.current) {
+                  // Check if stop was requested or aborted
+                  if (abortSignal?.aborted || stopRequestedRef.current) {
                     console.log('🛑 Stop requested during target audio');
-                    return false;
+                    throw new DOMException('Target audio aborted', 'AbortError');
                   }
                   
                   try {
                     const targetAudio = new Audio(targetUrl);
-                    // Store audio element for stop functionality
                     audioElementsRef.current.push(targetAudio);
-                    
-                    // CRITICAL: Set audio properties for better browser compatibility
                     targetAudio.crossOrigin = 'anonymous';
                     targetAudio.preload = 'auto';
-                    // Apply speed setting to audio playback
                     targetAudio.playbackRate = getSpeedRate(settings.pronunciationSpeed || 'Normal');
                     
-                    await new Promise((resolve, reject) => {
-                      const timeout = setTimeout(() => {
-                        reject(new Error('Audio timeout'));
-                      }, 10000); // 10 second timeout
-                      
-                      targetAudio.onended = () => {
-                        clearTimeout(timeout);
-                        resolve(null);
-                      };
-                      targetAudio.onerror = (error) => {
-                        clearTimeout(timeout);
-                        reject(error);
-                      };
-                      targetAudio.oncanplaythrough = () => {
-                        // Check stop flag before playing
-                        if (stopRequestedRef.current) {
-                          clearTimeout(timeout);
-                          resolve(null);
-                          return;
-                        }
-                        // Audio is ready to play
-                        targetAudio.play().catch(reject);
-                      };
-                      
-                      // Load the audio
-                      targetAudio.load();
-                    });
+                    await playAudioWithAbort(targetAudio, `TARGET ${targetWord} - Repeat ${i + 1}`);
                     console.log(`✅ TARGET audio played: ${targetWord} (${targetLangCode}) - Repeat ${i + 1}/${targetRepeats}`);
-                    
-                    // Remove audio element from tracking after it finishes
-                    audioElementsRef.current = audioElementsRef.current.filter(audio => audio !== targetAudio);
                     
                     // Small pause between repeats (except after last repeat)
                     if (i < targetRepeats - 1) {
-                      await new Promise(resolve => setTimeout(resolve, 300));
+                      await abortableSleep(300);
                     }
-                  } catch (error) {
+                  } catch (error: any) {
+                    if (error.name === 'AbortError') {
+                      console.log(`🛑 TARGET audio aborted: ${targetWord}`);
+                      throw error; // Re-throw to exit the loop
+                    }
                     console.log(`⚠️ TARGET audio failed: ${targetWord} (${targetLangCode}) - Repeat ${i + 1}`, error);
-                    // Continue with next repeat instead of returning false
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause before retry
+                    await abortableSleep(500); // Brief pause before retry
                   }
                 }
 
                 // Pause between translations
                 if (settings?.pauseBetweenTranslations) {
-                  await new Promise(resolve => setTimeout(resolve, settings.pauseBetweenTranslations * 1000));
+                  await abortableSleep(settings.pauseBetweenTranslations * 1000);
                 }
               }
 
               // Check if stop was requested between target and source
-              if (stopRequestedRef.current) {
+              if (abortSignal?.aborted || stopRequestedRef.current) {
                 console.log('🛑 Stop requested between target and source');
-                return false;
+                throw new DOMException('Playback aborted between languages', 'AbortError');
               }
 
-                            // FIXED ORDER: Play SOURCE language second (native/main language)
+              // FIXED ORDER: Play SOURCE language second (native/main language)
               if (wordId && sourceLangCode) {
                 const sourceUrl = getAudioUrl(wordId, sourceLangCode);
                 console.log(`🎵 Loading SOURCE audio SECOND: ${sourceUrl}`);
@@ -1130,59 +1201,33 @@ export function LanguageSelector() {
                 // FIXED MAPPING: Source language repeats (main/native language)
                 const sourceRepeats = settings?.repeatMainLanguage || 1;
                 for (let i = 0; i < sourceRepeats; i++) {
-                  // Check if stop was requested
-                  if (stopRequestedRef.current) {
+                  // Check if stop was requested or aborted
+                  if (abortSignal?.aborted || stopRequestedRef.current) {
                     console.log('🛑 Stop requested during source audio');
-                    return false;
+                    throw new DOMException('Source audio aborted', 'AbortError');
                   }
                   
                   try {
                     const sourceAudio = new Audio(sourceUrl);
-                    // Store audio element for stop functionality
                     audioElementsRef.current.push(sourceAudio);
-                    
-                    // Apply speed setting to source audio playback
+                    sourceAudio.crossOrigin = 'anonymous';
+                    sourceAudio.preload = 'auto';
                     sourceAudio.playbackRate = getSpeedRate(settings.pronunciationSpeed || 'Normal');
                     
-                    await new Promise((resolve, reject) => {
-                      const timeout = setTimeout(() => {
-                        reject(new Error('Audio timeout'));
-                      }, 10000); // 10 second timeout
-                      
-                      sourceAudio.onended = () => {
-                        clearTimeout(timeout);
-                        resolve(null);
-                      };
-                      sourceAudio.onerror = (error) => {
-                        clearTimeout(timeout);
-                        reject(error);
-                      };
-                      sourceAudio.oncanplaythrough = () => {
-                        // Check stop flag before playing
-                        if (stopRequestedRef.current) {
-                          clearTimeout(timeout);
-                          resolve(null);
-                          return;
-                        }
-                        sourceAudio.play().catch(reject);
-                      };
-                      
-                      // Load the audio
-                      sourceAudio.load();
-                    });
+                    await playAudioWithAbort(sourceAudio, `SOURCE ${sourceWord} - Repeat ${i + 1}`);
                     console.log(`✅ SOURCE audio played: ${sourceWord} (${sourceLangCode}) - Repeat ${i + 1}/${sourceRepeats}`);
-                    
-                    // Remove audio element from tracking after it finishes
-                    audioElementsRef.current = audioElementsRef.current.filter(audio => audio !== sourceAudio);
                     
                     // Small pause between repeats (except after last repeat)
                     if (i < sourceRepeats - 1) {
-                      await new Promise(resolve => setTimeout(resolve, 300));
+                      await abortableSleep(300);
                     }
-                  } catch (error) {
+                  } catch (error: any) {
+                    if (error.name === 'AbortError') {
+                      console.log(`🛑 SOURCE audio aborted: ${sourceWord}`);
+                      throw error; // Re-throw to exit the loop
+                    }
                     console.log(`⚠️ SOURCE audio failed: ${sourceWord} (${sourceLangCode}) - Repeat ${i + 1}`, error);
-                    // Continue with next repeat instead of returning false
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause before retry
+                    await abortableSleep(500); // Brief pause before retry
                   }
                 }
               }
@@ -1228,7 +1273,15 @@ export function LanguageSelector() {
               
               return true;
 
-            } catch (error) {
+            } catch (error: any) {
+              if (error.name === 'AbortError') {
+                console.log('🛑 Alnilam sequence aborted cleanly');
+                // Reset visual indicator
+                if (settings?.setCurrentAudioStep) {
+                  settings.setCurrentAudioStep('idle');
+                }
+                return false; // Return false to indicate playback was stopped
+              }
               console.error('❌ Alnilam sequence failed:', error);
               return false;
             }
