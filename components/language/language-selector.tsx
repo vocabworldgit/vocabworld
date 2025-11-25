@@ -566,6 +566,10 @@ export function LanguageSelector() {
   const [currentSection, setCurrentSection] = useState(1) // Start with FIRST AID KIT (index 1)
   const lastTopicSectionRef = useRef(1) // Track which section the user was on when selecting a topic
   
+  // Autoplay state machine
+  const autoplayAbortController = useRef<AbortController | null>(null)
+  const isAutoplayActive = useRef(false)
+  
   // Swipe gesture state
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
@@ -1276,8 +1280,15 @@ export function LanguageSelector() {
       audioCallInProgress: audioCallInProgress.current,
       timeSinceLastCall: now - lastAudioCallTime.current,
       stopRequested: stopRequestedRef.current,
+      autoplayAborted: autoplayAbortController.current?.signal.aborted,
       timestamp: now
     });
+    
+    // CRITICAL: Check abort signal first (highest priority)
+    if (autoplayAbortController.current?.signal.aborted) {
+      console.log('🛑 Autoplay aborted - rejecting playAudio call');
+      return;
+    }
     
     // CRITICAL: Check if stop was requested - exit immediately if true
     if (stopRequestedRef.current) {
@@ -1300,9 +1311,6 @@ export function LanguageSelector() {
       console.log('🔴 DEBUG: Returning early', { hasWord: !!word, isPlaying });
       return;
     }
-
-    // Reset stop flag when starting new playback
-    stopRequestedRef.current = false;
 
     // Set guards
     audioCallInProgress.current = true;
@@ -1396,6 +1404,15 @@ export function LanguageSelector() {
           
           console.log('🎵 Alnilam playWordSequence returned:', alnilamSuccess)
           
+          // Check abort signal first (highest priority)
+          if (autoplayAbortController.current?.signal.aborted) {
+            console.log('🛑 Autoplay aborted during Alnilam playback - immediate exit');
+            setCurrentAudioStep('idle')
+            setIsPlaying(false)
+            audioCallInProgress.current = false
+            return
+          }
+          
           // Check if stop was requested during playback - EXIT IMMEDIATELY
           if (stopRequestedRef.current) {
             console.log('🛑 Stop requested during Alnilam playback - cleaning up and exiting');
@@ -1460,6 +1477,15 @@ export function LanguageSelector() {
             playTargetOnly: settings.playTargetOnly
           }
         )
+        
+        // Check abort signal first (highest priority)
+        if (autoplayAbortController.current?.signal.aborted) {
+          console.log('🛑 Autoplay aborted during Algenib playback - immediate exit');
+          setCurrentAudioStep('idle')
+          setIsPlaying(false)
+          audioCallInProgress.current = false
+          return
+        }
         
         // Check if stop was requested during playback - EXIT IMMEDIATELY
         if (stopRequestedRef.current) {
@@ -1573,12 +1599,21 @@ export function LanguageSelector() {
     }
   }
 
-  // Stop audio function
+  // Stop audio function with abort controller
   const stopAudio = () => {
-    console.log('🛑 Stop audio requested - immediate stop');
+    console.log('🛑 STOP AUDIO - Complete shutdown initiated');
     
-    // Set stop flag to interrupt any ongoing audio
+    // Abort any ongoing autoplay loop immediately
+    if (autoplayAbortController.current) {
+      autoplayAbortController.current.abort();
+      autoplayAbortController.current = null;
+      console.log('✅ Autoplay aborted via AbortController');
+    }
+    
+    // Set legacy stop flags for backward compatibility
     stopRequestedRef.current = true;
+    autoPlayRef.current = false;
+    isAutoplayActive.current = false;
     
     // Clear the audio request queue
     audioRequestQueue.current = [];
@@ -1887,98 +1922,106 @@ export function LanguageSelector() {
     }
   }
 
-  // Auto-play controller function
+  // Auto-play controller function with AbortController pattern
   const startAutoPlay = async () => {
-    if (!vocabulary.length || !settings.autoPlay) return
-    
-    console.log('Starting auto-play from word', currentWordIndex + 1)
-    autoPlayRef.current = true // Enable auto-play loop
-    stopRequestedRef.current = false // Reset stop flag at start
-    
-    for (let i = currentWordIndex; i < vocabulary.length; i++) {
-      // Check if auto-play was cancelled - EARLY EXIT
-      if (!autoPlayRef.current || stopRequestedRef.current) {
-        console.log('Auto-play cancelled by user - stopping loop', { 
-          autoPlayRef: autoPlayRef.current, 
-          stopRequested: stopRequestedRef.current 
-        })
-        // Reset states before exiting
-        setIsPlaying(false)
-        setCurrentAudioStep('idle')
-        setAutoPlayActive(false)
-        stopRequestedRef.current = false // Reset stop flag
-        autoPlayRef.current = false
-        return // Exit immediately
-      }
-      
-      const word = vocabulary[i]
-      if (!word || !word.sourceWord || !word.targetWord) continue
-      
-      console.log(`Auto-play: Playing word ${i + 1} of ${vocabulary.length}`)
-      
-      // Update the display
-      setCurrentWordIndex(i)
-      
-      // CRITICAL: Check stop flags immediately after updating display
-      if (!autoPlayRef.current || stopRequestedRef.current) {
-        console.log('Auto-play cancelled after display update - stopping loop', {
-          autoPlayRef: autoPlayRef.current,
-          stopRequested: stopRequestedRef.current
-        })
-        setIsPlaying(false)
-        setCurrentAudioStep('idle')
-        setAutoPlayActive(false)
-        stopRequestedRef.current = false
-        autoPlayRef.current = false
-        return
-      }
-      
-      // Play the word
-      await playAudio(word, false)
-      
-      // Check again if auto-play was cancelled during playback - EARLY EXIT
-      if (!autoPlayRef.current || stopRequestedRef.current) {
-        console.log('Auto-play cancelled during playback - stopping loop', {
-          autoPlayRef: autoPlayRef.current,
-          stopRequested: stopRequestedRef.current
-        })
-        // Reset states before exiting
-        setIsPlaying(false)
-        setCurrentAudioStep('idle')
-        setAutoPlayActive(false)
-        stopRequestedRef.current = false // Reset stop flag
-        autoPlayRef.current = false
-        return // Exit immediately
-      }
-      
-      // Pause before next word (except for last word)
-      if (i < vocabulary.length - 1) {
-        setCurrentAudioStep('pause')
-        await sleep(settings.pauseForNextWord * 1000)
-        
-        // Check one more time after pause - EARLY EXIT
-        if (!autoPlayRef.current || stopRequestedRef.current) {
-          console.log('Auto-play cancelled during pause - stopping loop', {
-            autoPlayRef: autoPlayRef.current,
-            stopRequested: stopRequestedRef.current
-          })
-          setIsPlaying(false)
-          setCurrentAudioStep('idle')
-          setAutoPlayActive(false)
-          stopRequestedRef.current = false // Reset stop flag
-          autoPlayRef.current = false
-          return // Exit immediately
-        }
-      }
+    if (!vocabulary.length || !settings.autoPlay) {
+      console.log('❌ Autoplay blocked: no vocabulary or autoplay disabled');
+      return;
     }
     
-    // Clean up when done naturally (not cancelled)
-    autoPlayRef.current = false
-    setAutoPlayActive(false)
-    setIsPlaying(false)
-    setCurrentAudioStep('idle')
-    stopRequestedRef.current = false // Reset stop flag
-    console.log('Auto-play sequence completed')
+    // Prevent multiple simultaneous autoplay instances
+    if (isAutoplayActive.current) {
+      console.log('⚠️ Autoplay already active, ignoring duplicate call');
+      return;
+    }
+    
+    console.log('▶️ AUTOPLAY START from word', currentWordIndex + 1);
+    
+    // Create new AbortController for this autoplay session
+    autoplayAbortController.current = new AbortController();
+    const { signal } = autoplayAbortController.current;
+    
+    // Set state flags
+    isAutoplayActive.current = true;
+    autoPlayRef.current = true;
+    stopRequestedRef.current = false;
+    setAutoPlayActive(true);
+    
+    try {
+      for (let i = currentWordIndex; i < vocabulary.length; i++) {
+        // Check abort signal FIRST - highest priority check
+        if (signal.aborted) {
+          console.log('🛑 Autoplay aborted by signal at word', i + 1);
+          throw new DOMException('Autoplay aborted', 'AbortError');
+        }
+        
+        const word = vocabulary[i];
+        if (!word || !word.sourceWord || !word.targetWord) {
+          console.log('⏭️ Skipping invalid word at index', i);
+          continue;
+        }
+        
+        console.log(`▶️ Autoplay [${i + 1}/${vocabulary.length}]: ${word.sourceWord}`);
+        
+        // Update display ONLY if not aborted
+        if (!signal.aborted) {
+          setCurrentWordIndex(i);
+        }
+        
+        // Check abort BEFORE playing
+        if (signal.aborted) {
+          console.log('🛑 Aborted before playAudio');
+          throw new DOMException('Autoplay aborted', 'AbortError');
+        }
+        
+        // Play the word - this is async and may take time
+        await playAudio(word, false);
+        
+        // Check abort AFTER playing
+        if (signal.aborted) {
+          console.log('🛑 Aborted after playAudio');
+          throw new DOMException('Autoplay aborted', 'AbortError');
+        }
+        
+        // Pause before next word (except for last word)
+        if (i < vocabulary.length - 1) {
+          setCurrentAudioStep('pause');
+          
+          // Interruptible sleep using abort signal
+          await new Promise<void>((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+              resolve();
+            }, settings.pauseForNextWord * 1000);
+            
+            // Listen for abort signal during sleep
+            signal.addEventListener('abort', () => {
+              clearTimeout(timeoutId);
+              reject(new DOMException('Autoplay aborted during pause', 'AbortError'));
+            });
+          });
+        }
+      }
+      
+      // Natural completion (not aborted)
+      console.log('✅ Autoplay completed naturally');
+      
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('🛑 Autoplay aborted cleanly:', error.message);
+      } else {
+        console.error('❌ Autoplay error:', error);
+      }
+    } finally {
+      // Always clean up state
+      console.log('🧹 Autoplay cleanup');
+      isAutoplayActive.current = false;
+      autoPlayRef.current = false;
+      setAutoPlayActive(false);
+      setIsPlaying(false);
+      setCurrentAudioStep('idle');
+      stopRequestedRef.current = false;
+      autoplayAbortController.current = null;
+    }
   }
 
   // Auto-play effect - only when manually triggered and user has interacted
