@@ -163,20 +163,24 @@ export class AlnilamAudioService {
    * Adapts the component's call to our internal interface
    */
   async playWordSequence(
-    word: { id: number; sourceWord: string; targetWord: string },
-    targetLanguage: string,
-    nativeLanguage: string,
+    sourceWord: string,
+    targetWord: string,
     componentSettings: {
       speed: 'Slow' | 'Normal' | 'Fast';
       pauseBetweenTranslations: number;
       pauseForNextWord: number;
       repeatTargetLanguage: number;
       repeatMainLanguage: number;
+      playTargetOnly?: boolean;
       setCurrentAudioStep?: (step: string) => void;
-    }
+    },
+    wordId: number,
+    nativeLanguage: string,
+    targetLanguage: string
   ): Promise<boolean> {
     try {
-      console.log(`🌟 Alnilam adapter: "${word.sourceWord}" → "${word.targetWord}"`);
+      console.log(`🌟 Alnilam adapter: "${sourceWord}" → "${targetWord}"`);
+      console.log('🎮 DEBUG: Alnilam received playTargetOnly =', componentSettings.playTargetOnly);
 
       // Convert language names to codes
       const sourceLanguageCode = this.getLanguageCode(targetLanguage);
@@ -187,24 +191,34 @@ export class AlnilamAudioService {
         return false;
       }
 
-      console.log(`🌊 Playing word ${word.id}: ${word.sourceWord} (${targetLanguage}) → ${word.targetWord} (${nativeLanguage})`);
+      console.log(`🌊 Playing word ${wordId}: ${sourceWord} (${targetLanguage}) → ${targetWord} (${nativeLanguage})`);
 
       // Step 1: Play training language (what user is learning)
       if (componentSettings.setCurrentAudioStep) {
         componentSettings.setCurrentAudioStep('training');
       }
       
-      console.log(`🎯 Step 1: Playing training language - wordId: ${word.id}, language: ${sourceLanguageCode}`);
+      console.log(`🎯 Step 1: Playing training language - wordId: ${wordId}, language: ${sourceLanguageCode}`);
       for (let i = 0; i < componentSettings.repeatTargetLanguage; i++) {
-        const success = await this.playWordAudio(word.id, sourceLanguageCode);
+        const success = await this.playWordAudio(wordId, sourceLanguageCode);
         console.log(`🎯 Training language attempt ${i + 1}: ${success ? 'SUCCESS' : 'FAILED'}`);
         if (!success) {
-          console.warn(`❌ Failed to play training language for word ${word.id}`);
+          console.warn(`❌ Failed to play training language for word ${wordId}`);
           return false;
         }
         if (i < componentSettings.repeatTargetLanguage - 1) {
           await this.sleep(300); // Brief pause between repeats
         }
+      }
+
+      // Skip native language if playTargetOnly is enabled
+      if (componentSettings.playTargetOnly) {
+        console.log('🎯 Skipping native language (playTargetOnly mode)');
+        if (componentSettings.setCurrentAudioStep) {
+          componentSettings.setCurrentAudioStep('idle');
+        }
+        console.log('✅ Alnilam word sequence completed successfully (target only)');
+        return true;
       }
 
       // Pause between languages
@@ -218,20 +232,20 @@ export class AlnilamAudioService {
         componentSettings.setCurrentAudioStep('main');
       }
       
-      console.log(`🎯 Step 2: Playing native language - wordId: ${word.id}, language: ${targetLanguageCode || 'en'}`);
+      console.log(`🎯 Step 2: Playing native language - wordId: ${wordId}, language: ${targetLanguageCode || 'en'}`);
       for (let i = 0; i < componentSettings.repeatMainLanguage; i++) {
         // For native language, try to find English audio first, then fall back to target language audio
         let success = false;
         if (targetLanguageCode && targetLanguageCode !== 'en') {
-          success = await this.playWordAudio(word.id, 'en'); // Try English first
+          success = await this.playWordAudio(wordId, 'en'); // Try English first
         }
         if (!success && targetLanguageCode) {
-          success = await this.playWordAudio(word.id, targetLanguageCode);
+          success = await this.playWordAudio(wordId, targetLanguageCode);
         }
         
         console.log(`🎯 Native language attempt ${i + 1}: ${success ? 'SUCCESS' : 'FAILED'}`);
         if (!success) {
-          console.warn(`❌ Failed to play native language for word ${word.id}`);
+          console.warn(`❌ Failed to play native language for word ${wordId}`);
           return false;
         }
         if (i < componentSettings.repeatMainLanguage - 1) {

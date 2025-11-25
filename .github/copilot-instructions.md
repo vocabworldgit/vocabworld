@@ -16,14 +16,7 @@ This is a Next.js 15 PWA language learning app with Capacitor for mobile deploym
 ## Key Architectural Patterns
 
 ### Audio Service Architecture
-The app uses a **unified audio service pattern** with multiple fallback providers:
-```typescript
-// Primary pattern: Multiple audio services with unified interface
-lib/alnilam-audio-service.ts     // Custom TTS (primary)
-lib/algenib-audio-service.js     // Fallback TTS
-lib/azure-tts-service.ts         // Cloud TTS
-hooks/use-unified-audio.ts       // Unified hook for components
-```
+The app uses a **unified audio service pattern** 
 
 **Critical**: Audio services are **stateful** and require proper cleanup. Always use the hooks pattern, never instantiate services directly in components.
 
@@ -176,7 +169,7 @@ Always implement graceful degradation for audio services and premium features. F
 ## Testing Strategy
 
 ### Manual Testing Priority
-1. **Audio playback** across all supported TTS services
+
 2. **Subscription flow** from payment to content unlock
 3. **Mobile responsiveness** and PWA installation
 4. **Offline functionality** for cached vocabulary

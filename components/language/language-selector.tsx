@@ -91,6 +91,9 @@ interface TopicSliderProps {
   handleSignOut: () => Promise<void>
   getFlagIcon: (languageCode: string) => string
   completedTopicIds: number[]
+  currentSection: number
+  setCurrentSection: (section: number) => void
+  lastTopicSectionRef: React.MutableRefObject<number>
 }
 
 const TopicSlider: React.FC<TopicSliderProps> = ({ 
@@ -109,22 +112,16 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
   setShowPaywall,
   handleSignOut,
   getFlagIcon,
-  completedTopicIds
+  completedTopicIds,
+  currentSection,
+  setCurrentSection,
+  lastTopicSectionRef
 }) => {
-  const [currentSection, setCurrentSection] = useState(1) // Start with FIRST AID KIT (index 1)
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
-
-  // Set default section to FIRST AID KIT on component mount
-  useEffect(() => {
-    const defaultSectionIndex = sections.findIndex(section => section.isDefault)
-    if (defaultSectionIndex >= 0) {
-      setCurrentSection(defaultSectionIndex)
-    }
-  }, [])
 
   // Define the 7 sections with their topics and metadata (Account first, but FIRST AID KIT is default)
   const sections = [
@@ -291,6 +288,21 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
     const iconData = TOPIC_ICONS.find(icon => icon.id === topic.id)
     const isCompleted = completedTopicIds.includes(topic.id)
     
+    // Wrap onTopicSelect to save current section before calling it
+    const handleTopicClick = (topic: Topic) => {
+      lastTopicSectionRef.current = currentSection // Save current section
+      onTopicSelect(topic)
+    }
+    
+    // Debug logging
+    if (topic.id === 1) {
+      console.log('🎯 Topic 1 render:', { 
+        completedTopicIds, 
+        isCompleted,
+        topicId: topic.id 
+      })
+    }
+    
     // Direct mapping for custom SVG icons
     const customSVGIcons: { [key: number]: string } = {
       11: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M12.74 5.47c2.36 1.03 3.61 3.56 3.18 5.99A6 6 0 0 1 18 16v.17a3 3 0 0 1 1-.17a3 3 0 0 1 3 3a3 3 0 0 1-3 3H6a4 4 0 0 1-4-4a4 4 0 0 1 4-4h.27C5 12.45 4.6 10.24 5.5 8.26a5.49 5.49 0 0 1 7.24-2.79m-.81 1.83c-1.77-.8-3.84.01-4.62 1.77c-.46 1.02-.38 2.15.1 3.06A5.99 5.99 0 0 1 12 10c.7 0 1.38.12 2 .34a3.51 3.51 0 0 0-2.07-3.04m1.62-3.66c-.55-.24-1.1-.41-1.67-.52l2.49-1.3l.9 2.89a7.7 7.7 0 0 0-1.72-1.07m-7.46.8c-.49.35-.92.75-1.29 1.19l.11-2.81l2.96.68c-.62.21-1.22.53-1.78.94M18 9.71c-.09-.59-.22-1.16-.41-1.71l2.38 1.5l-2.05 2.23c.11-.65.13-1.33.08-2.02M3.04 11.3c.07.6.2 1.17.39 1.7l-2.37-1.5L3.1 9.28c-.1.65-.13 1.33-.06 2.02M19 18h-3v-2a4 4 0 0 0-4-4a4 4 0 0 0-4 4H6a2 2 0 0 0-2 2a2 2 0 0 0 2 2h13a1 1 0 0 0 1-1a1 1 0 0 0-1-1"/></svg>',
@@ -300,11 +312,11 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
     return (
       <button
         key={topic.id}
-        onClick={() => onTopicSelect(topic)}
-        className={`bg-black/40 border rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center hover:bg-black/50 transition-all duration-300 transform hover:scale-[1.02] h-32 sm:h-36 shadow-lg hover:shadow-xl ${
+        onClick={() => handleTopicClick(topic)}
+        className={`bg-black/40 border-2 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center hover:bg-black/50 transition-all duration-300 transform hover:scale-[1.02] h-32 sm:h-36 shadow-lg hover:shadow-xl ${
           selectedTopic?.id === topic.id ? "bg-black/60 border-white/30 shadow-xl" : ""
         } ${
-          isCompleted ? "border-white/60 shadow-[0_0_15px_rgba(255,255,255,0.3)] animate-pulse" : "border-white/20"
+          isCompleted ? "!border-white shadow-[0_0_20px_rgba(255,255,255,0.5),0_0_40px_rgba(255,255,255,0.3)]" : "border-white/20"
         }`}
       >
         <div className="flex flex-col items-center justify-center h-full gap-2">
@@ -381,10 +393,10 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                   )}
 
                   {/* Merged User Info, Subscription, and Sign Out */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 space-y-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20 space-y-3 sm:space-y-4">
                     {/* User Profile Info */}
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
                         {user?.avatarUrl ? (
                           <img 
                             src={user.avatarUrl} 
@@ -395,28 +407,28 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                           <Icon icon="solar:user-bold" width="24" height="24" className="text-white" />
                         )}
                       </div>
-                      <div>
-                        <h3 className="text-white font-semibold text-lg">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-white font-semibold text-base sm:text-lg truncate">
                           {user?.fullName || user?.email?.split('@')[0] || 'User'}
                         </h3>
-                        <p className="text-white/70 text-sm">{user?.email}</p>
+                        <p className="text-white/70 text-xs sm:text-sm truncate">{user?.email}</p>
                       </div>
                     </div>
 
                     {/* Subscription Status */}
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-white font-medium text-base flex items-center space-x-2">
-                        <Icon icon="solar:crown-bold" width="20" height="20" className="text-yellow-400" />
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-white font-medium text-sm sm:text-base flex items-center space-x-1.5 sm:space-x-2">
+                        <Icon icon="solar:crown-bold" width="18" height="18" className="text-yellow-400 sm:w-5 sm:h-5" />
                         <span>Subscription</span>
                       </h4>
-                      <div className="px-3 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-300 border border-gray-500/30">
+                      <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-gray-500/20 text-gray-300 border border-gray-500/30">
                         Free
                       </div>
                     </div>
                     
                     <button
                       onClick={() => setShowPaywall(true)}
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium text-sm hover:from-blue-600 hover:to-purple-700 transition-all"
+                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg font-medium text-xs sm:text-sm hover:from-blue-600 hover:to-purple-700 transition-all"
                     >
                       Upgrade to Premium
                     </button>
@@ -424,9 +436,9 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                     {/* Sign Out Button */}
                     <button
                       onClick={handleSignOut}
-                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-3 px-4 rounded-lg font-medium hover:bg-white/20 transition-all flex items-center justify-center space-x-2"
+                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg font-medium text-sm hover:bg-white/20 transition-all flex items-center justify-center space-x-2"
                     >
-                      <Icon icon="solar:logout-3-bold" width="20" height="20" />
+                      <Icon icon="solar:logout-3-bold" width="18" height="18" className="sm:w-5 sm:h-5" />
                       <span>Sign Out</span>
                     </button>
                   </div>
@@ -551,6 +563,13 @@ export function LanguageSelector() {
   const [showSettings, setShowSettings] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
+  const [currentSection, setCurrentSection] = useState(1) // Start with FIRST AID KIT (index 1)
+  const lastTopicSectionRef = useRef(1) // Track which section the user was on when selecting a topic
+  
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  
   const [settings, setSettings] = useState({
     autoPlay: true, // Auto-play enabled by default as requested
     trainingLanguageVoice: "Male" as "Female" | "Male", // Changed to Male
@@ -560,6 +579,7 @@ export function LanguageSelector() {
     pauseForNextWord: 0.7, // 0.7 seconds by default
     repeatTargetLanguage: 1, // 1x by default
     repeatMainLanguage: 1, // 1x by default
+    playTargetOnly: false, // Play only target language (skip native translation)
   })
 
   // 🍎 iOS Detection for Glass Effect Override
@@ -605,6 +625,9 @@ export function LanguageSelector() {
   // Audio call tracking to prevent rapid concurrent calls
   const audioCallInProgress = useRef(false)
   const lastAudioCallTime = useRef(0)
+  
+  // Position save debounce ref
+  const savePositionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // Hybrid audio service for Umbriel + TTS
   const [hasUmbrielAudio, setHasUmbrielAudio] = useState(false)
@@ -1165,20 +1188,30 @@ export function LanguageSelector() {
               // Track word progress when audio completes successfully
               // Get user from context - we'll need to access user state
               const userId = (window as any).__vocaWorldUserId;
-              const targetLangCode = (window as any).__vocaWorldTargetLangCode;
+              const userTargetLangCode = (window as any).__vocaWorldTargetLangCode;
               
-              if (userId && wordId && targetLangCode) {
+              if (userId && wordId && userTargetLangCode) {
                 try {
-                  await fetch('/api/progress/track', {
+                  const response = await fetch('/api/progress/track', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       userId: userId,
                       vocabularyId: wordId,
-                      targetLanguageCode: targetLangCode
+                      targetLanguageCode: userTargetLangCode
                     })
                   });
-                  console.log('📊 Progress tracked for word:', wordId);
+                  
+                  if (response.ok) {
+                    const data = await response.json();
+                    console.log('📊 Progress tracked for word:', wordId);
+                    
+                    // Update completed topics immediately from API response
+                    if (data.completedTopicIds) {
+                      setCompletedTopicIds(data.completedTopicIds);
+                      console.log('🔄 Completed topics updated:', data.completedTopicIds);
+                    }
+                  }
                 } catch (error) {
                   console.error('Failed to track progress:', error);
                 }
@@ -1242,8 +1275,15 @@ export function LanguageSelector() {
       autoPlay,
       audioCallInProgress: audioCallInProgress.current,
       timeSinceLastCall: now - lastAudioCallTime.current,
+      stopRequested: stopRequestedRef.current,
       timestamp: now
     });
+    
+    // CRITICAL: Check if stop was requested - exit immediately if true
+    if (stopRequestedRef.current) {
+      console.log('🛑 Stop flag is active - rejecting playAudio call');
+      return;
+    }
     
     // Prevent rapid consecutive calls (less than 100ms apart)
     if (audioCallInProgress.current) {
@@ -1260,6 +1300,9 @@ export function LanguageSelector() {
       console.log('🔴 DEBUG: Returning early', { hasWord: !!word, isPlaying });
       return;
     }
+
+    // Reset stop flag when starting new playback
+    stopRequestedRef.current = false;
 
     // Set guards
     audioCallInProgress.current = true;
@@ -1327,6 +1370,12 @@ export function LanguageSelector() {
         })
         setActiveAudioService("Alnilam")
         
+        console.log('🎮 DEBUG: Calling Alnilam with settings:', {
+          playTargetOnly: settings.playTargetOnly,
+          repeatTarget: settings.repeatTargetLanguage,
+          repeatMain: settings.repeatMainLanguage
+        })
+        
         try {
           const alnilamSuccess = await alnilamService.playWordSequence(
             sourceWord,           // sourceWord string
@@ -1337,6 +1386,7 @@ export function LanguageSelector() {
               pauseForNextWord: settings.pauseForNextWord,
               repeatTargetLanguage: settings.repeatTargetLanguage,
               repeatMainLanguage: settings.repeatMainLanguage,
+              playTargetOnly: settings.playTargetOnly,
               setCurrentAudioStep
             },
             wordId,               // wordId
@@ -1345,6 +1395,14 @@ export function LanguageSelector() {
           )
           
           console.log('🎵 Alnilam playWordSequence returned:', alnilamSuccess)
+          
+          // Check if stop was requested during playback
+          if (stopRequestedRef.current) {
+            console.log('🛑 Stop requested during Alnilam playback - cleaning up');
+            setCurrentAudioStep('idle')
+            setIsPlaying(false)
+            return
+          }
           
           if (alnilamSuccess) {
             console.log('✅ Alnilam audio completed successfully')
@@ -1397,9 +1455,18 @@ export function LanguageSelector() {
           {
             repeatTargetLanguage: settings.repeatTargetLanguage,
             repeatMainLanguage: settings.repeatMainLanguage,
-            pauseBetweenTranslations: settings.pauseBetweenTranslations
+            pauseBetweenTranslations: settings.pauseBetweenTranslations,
+            playTargetOnly: settings.playTargetOnly
           }
         )
+        
+        // Check if stop was requested during playback
+        if (stopRequestedRef.current) {
+          console.log('🛑 Stop requested during Algenib playback - cleaning up');
+          setCurrentAudioStep('idle')
+          setIsPlaying(false)
+          return
+        }
         
         if (algenibSuccess) {
           console.log('✅ Algenib audio completed successfully')
@@ -1530,7 +1597,7 @@ export function LanguageSelector() {
     // Clear the audio elements array
     audioElementsRef.current = [];
     
-    // Cancel the auto-play loop
+    // Cancel the auto-play loop - CRITICAL: Do this BEFORE resetting other states
     autoPlayRef.current = false
     
     // Stop hybrid audio service - TTS DISABLED
@@ -1541,7 +1608,7 @@ export function LanguageSelector() {
     //   speechSynthesis.cancel()
     // }
     
-    // Reset all audio states
+    // Reset all audio states - must happen AFTER autoPlayRef is set to false
     setIsPlaying(false)
     setCurrentAudioStep('idle')
     setAutoPlayActive(false)
@@ -1609,11 +1676,14 @@ export function LanguageSelector() {
     
     const fetchCompletedTopics = async () => {
       try {
+        console.log('🔍 Fetching completed topics for:', { userId: user.id, targetLanguageCode })
         const response = await fetch(`/api/progress/topics?userId=${user.id}&targetLanguageCode=${targetLanguageCode}`)
         if (response.ok) {
           const data = await response.json()
-          setCompletedTopicIds(data.completedTopicIds || [])
           console.log('📊 Completed topics loaded:', data.completedTopicIds)
+          setCompletedTopicIds(data.completedTopicIds || [])
+        } else {
+          console.error('Failed to fetch completed topics:', response.status)
         }
       } catch (error) {
         console.error('Failed to fetch completed topics:', error)
@@ -1622,6 +1692,45 @@ export function LanguageSelector() {
     
     fetchCompletedTopics()
   }, [user?.id, targetLanguageCode])
+
+  // 💾 Auto-save position when word index changes (debounced)
+  useEffect(() => {
+    if (!user?.id || !selectedTopic || !targetLanguageCode || vocabulary.length === 0) {
+      return
+    }
+
+    // Clear any existing timeout
+    if (savePositionTimeoutRef.current) {
+      clearTimeout(savePositionTimeoutRef.current)
+    }
+
+    // Debounce save for 2 seconds to avoid excessive API calls
+    savePositionTimeoutRef.current = setTimeout(async () => {
+      try {
+        await fetch('/api/progress/position', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            topicId: selectedTopic.id,
+            targetLanguageCode: targetLanguageCode,
+            currentWordIndex: currentWordIndex,
+            totalWords: vocabulary.length
+          })
+        })
+        console.log('💾 Auto-saved position:', currentWordIndex, 'for topic:', selectedTopic.id)
+      } catch (error) {
+        console.error('Failed to auto-save position:', error)
+      }
+    }, 2000)
+
+    // Cleanup on unmount
+    return () => {
+      if (savePositionTimeoutRef.current) {
+        clearTimeout(savePositionTimeoutRef.current)
+      }
+    }
+  }, [currentWordIndex, user?.id, selectedTopic, targetLanguageCode, vocabulary.length])
 
   // Smart background preloading - invisible to user
   const preloadVocabularyInBackground = async (nativeLang: string, targetLang: string) => {
@@ -1784,10 +1893,15 @@ export function LanguageSelector() {
     autoPlayRef.current = true // Enable auto-play loop
     
     for (let i = currentWordIndex; i < vocabulary.length; i++) {
-      // Check if auto-play was cancelled
+      // Check if auto-play was cancelled - EARLY EXIT
       if (!autoPlayRef.current) {
-        console.log('Auto-play cancelled by user')
-        break
+        console.log('Auto-play cancelled by user - stopping loop')
+        // Reset states before exiting
+        setIsPlaying(false)
+        setCurrentAudioStep('idle')
+        setAutoPlayActive(false)
+        stopRequestedRef.current = false // Reset stop flag
+        return // Exit immediately
       }
       
       const word = vocabulary[i]
@@ -1801,24 +1915,40 @@ export function LanguageSelector() {
       // Play the word
       await playAudio(word, false)
       
-      // Check again if auto-play was cancelled during playback
+      // Check again if auto-play was cancelled during playback - EARLY EXIT
       if (!autoPlayRef.current) {
-        console.log('Auto-play cancelled during playback')
-        break
+        console.log('Auto-play cancelled during playback - stopping loop')
+        // Reset states before exiting
+        setIsPlaying(false)
+        setCurrentAudioStep('idle')
+        setAutoPlayActive(false)
+        stopRequestedRef.current = false // Reset stop flag
+        return // Exit immediately
       }
       
       // Pause before next word (except for last word)
       if (i < vocabulary.length - 1) {
         setCurrentAudioStep('pause')
         await sleep(settings.pauseForNextWord * 1000)
+        
+        // Check one more time after pause - EARLY EXIT
+        if (!autoPlayRef.current) {
+          console.log('Auto-play cancelled during pause - stopping loop')
+          setIsPlaying(false)
+          setCurrentAudioStep('idle')
+          setAutoPlayActive(false)
+          stopRequestedRef.current = false // Reset stop flag
+          return // Exit immediately
+        }
       }
     }
     
-    // Clean up when done
+    // Clean up when done naturally (not cancelled)
     autoPlayRef.current = false
     setAutoPlayActive(false)
     setIsPlaying(false)
     setCurrentAudioStep('idle')
+    stopRequestedRef.current = false // Reset stop flag
     console.log('Auto-play sequence completed')
   }
 
@@ -2131,6 +2261,21 @@ export function LanguageSelector() {
     // User has access, proceed with topic selection
     const cacheKey = `${topic.id}-${targetLanguage}-${nativeLanguage}`
     
+    // Load saved position for this topic (if user is authenticated)
+    let savedPosition = 0
+    if (user?.id && targetLanguageCode) {
+      try {
+        const positionResponse = await fetch(`/api/progress/position?userId=${user.id}&topicId=${topic.id}&targetLanguageCode=${targetLanguageCode}`)
+        if (positionResponse.ok) {
+          const positionData = await positionResponse.json()
+          savedPosition = positionData.currentWordIndex || 0
+          console.log('📍 Loaded saved position:', savedPosition, 'for topic:', topic.id)
+        }
+      } catch (error) {
+        console.error('Failed to load saved position:', error)
+      }
+    }
+    
     // Check if we have cached vocabulary
     if (dataCache.vocabularyCache[cacheKey]) {
       console.log('✅ Using cached vocabulary - instant transition!')
@@ -2141,7 +2286,7 @@ export function LanguageSelector() {
       setTotalWords(cachedVocabulary.length)
       setCurrentOffset(cachedVocabulary.length)
       setHasMoreWords(false)
-      setCurrentWordIndex(0)
+      setCurrentWordIndex(savedPosition) // Resume from saved position
       setSelectedTopic(topic)
       
       // Reset audio states
@@ -2185,7 +2330,7 @@ export function LanguageSelector() {
         setTotalWords(vocabularyResponse.totalWords || 0)
         setCurrentOffset(vocabularyResponse.vocabulary?.length || 0)
         setHasMoreWords(false)
-        setCurrentWordIndex(0)
+        setCurrentWordIndex(savedPosition) // Resume from saved position
         setSelectedTopic(topic)
         
         // Reset audio states
@@ -2266,27 +2411,57 @@ export function LanguageSelector() {
     setHasUserInteracted(true)
     
     if (isPlaying || autoPlayActive) {
+      console.log('🛑 User pressed stop button - stopping all audio and autoplay')
       stopAudio()
     } else {
       const currentWord = vocabulary[currentWordIndex]
       if (currentWord) {
-        console.log('Manual play button clicked')
+        console.log('▶️ Manual play button clicked')
         if (settings.autoPlay) {
           // Start auto-play sequence from current word
+          console.log('🔄 Starting autoplay from word', currentWordIndex + 1)
           autoPlayRef.current = true
           setAutoPlayActive(true)
         } else {
           // Just play the current word once
+          console.log('▶️ Playing single word')
           setIsPlaying(true)
           playAudio(currentWord, false).then(() => {
-            setIsPlaying(false)
+            // Only reset isPlaying if stop wasn't requested
+            if (!stopRequestedRef.current) {
+              setIsPlaying(false)
+            }
           })
         }
       }
     }
   }
 
-  const handleBackToTopics = () => {
+  const handleBackToTopics = async () => {
+    // Save current position before going back
+    if (user?.id && selectedTopic && targetLanguageCode && vocabulary.length > 0) {
+      try {
+        await fetch('/api/progress/position', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            topicId: selectedTopic.id,
+            targetLanguageCode: targetLanguageCode,
+            currentWordIndex: currentWordIndex,
+            totalWords: vocabulary.length
+          })
+        })
+        console.log('💾 Position saved:', currentWordIndex, 'for topic:', selectedTopic.id)
+      } catch (error) {
+        console.error('Failed to save position:', error)
+      }
+    }
+    
+    // Restore the section where the topic was selected from
+    setCurrentSection(lastTopicSectionRef.current)
+    console.log('📍 Restoring section:', lastTopicSectionRef.current)
+    
     // Stop any currently playing audio when navigating back
     stopAudio()
     setCurrentPage("confirmation")
@@ -2309,9 +2484,35 @@ export function LanguageSelector() {
     })
   }
 
+  // Swipe gesture handlers for learning page
+  const minSwipeDistance = 50 // Minimum distance for swipe
+  
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+  
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+  
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance // Swipe from right to left
+    const isRightSwipe = distance < -minSwipeDistance // Swipe from left to right
+    
+    // Right swipe (left to right) goes back
+    if (isRightSwipe && currentPage === "learning") {
+      console.log('🔄 Swipe detected - going back to topics')
+      handleBackToTopics()
+    }
+  }
+
   return (
-    <div className="w-full max-w-2xl mx-auto px-3 h-full max-h-[85vh] flex items-center">
-      <div className={`bg-white/5 backdrop-blur-3xl border border-white/15 rounded-3xl px-5 sm:px-7 py-5 sm:py-6 shadow-2xl transform transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl w-full max-h-full overflow-hidden ${isTransitioning ? 'bg-white/10' : 'bg-white/5'}`}>
+    <div className="w-full max-w-2xl mx-auto px-2 sm:px-3 h-full max-h-[90vh] sm:max-h-[85vh] flex items-center">
+      <div className={`bg-white/5 backdrop-blur-3xl border border-white/15 rounded-2xl sm:rounded-3xl px-3 sm:px-5 md:px-7 py-4 sm:py-5 md:py-6 shadow-2xl transform transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl w-full max-h-full overflow-hidden ${isTransitioning ? 'bg-white/10' : 'bg-white/5'}`}>
         {isLoading && (
           <div className="text-center mb-4">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
@@ -2320,24 +2521,29 @@ export function LanguageSelector() {
         )}
         
         {currentPage === "learning" && (
-          <div className="text-center transition-all duration-500 ease-in-out">
+          <div 
+            className="text-center transition-all duration-500 ease-in-out"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
             <div className="mb-12">
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-8 gap-2">
                 <button
                   onClick={handleBackToTopics}
-                  className="w-12 h-12 bg-black/40 border border-white/20 rounded-full flex items-center justify-center hover:bg-black/50 transition-all duration-300 transform hover:scale-110 shadow-lg"
+                  className="w-10 h-10 sm:w-12 sm:h-12 bg-black/40 border border-white/20 rounded-full flex items-center justify-center hover:bg-black/50 transition-all duration-300 transform hover:scale-110 shadow-lg flex-shrink-0"
                 >
-                  <ArrowLeft className="w-6 h-6 text-white/80" />
+                  <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white/80" />
                 </button>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 justify-center">
                   {/* Topic Icon */}
                   {(() => {
                     // First check if topic has an SVG icon in the JSON data
                     if (selectedTopic?.icon) {
                       return (
                         <div 
-                          className="w-10 h-10 sm:w-12 sm:h-12" 
+                          className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex-shrink-0" 
                           style={{ color: 'rgba(255,255,255,0.8)' }}
                           dangerouslySetInnerHTML={{ __html: selectedTopic.icon! }}
                         />
@@ -2348,21 +2554,21 @@ export function LanguageSelector() {
                     const iconData = TOPIC_ICONS.find(icon => icon.id === selectedTopic?.id)
                     if (iconData) {
                       if (typeof iconData.icon === 'string') {
-                        return <Icon icon={iconData.icon} width="32" height="32" style={{ color: 'rgba(255,255,255,0.8)' }} />
+                        return <Icon icon={iconData.icon} className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.8)' }} />
                       }
                       const IconComponent = iconData.icon as any
-                      return <IconComponent className="w-8 h-8 text-white/80" />
+                      return <IconComponent className="w-7 h-7 sm:w-8 sm:h-8 text-white/80 flex-shrink-0" />
                     }
-                    return <BookOpen className="w-8 h-8 text-white/80" />
+                    return <BookOpen className="w-7 h-7 sm:w-8 sm:h-8 text-white/80 flex-shrink-0" />
                   })()}
-                  <h1 className="text-2xl font-medium text-white">{selectedTopic?.name}</h1>
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-medium text-white text-center truncate">{selectedTopic?.name}</h1>
                 </div>
                 
                 <button
                   onClick={handleSettingsClick}
-                  className="w-12 h-12 bg-black/40 border border-white/20 rounded-full flex items-center justify-center hover:bg-black/50 transition-all duration-300 transform hover:scale-110 shadow-lg"
+                  className="w-10 h-10 sm:w-12 sm:h-12 bg-black/40 border border-white/20 rounded-full flex items-center justify-center hover:bg-black/50 transition-all duration-300 transform hover:scale-110 shadow-lg flex-shrink-0"
                 >
-                  <Settings className="w-6 h-6 text-white/80" />
+                  <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white/80" />
                 </button>
               </div>
 
@@ -2381,7 +2587,7 @@ export function LanguageSelector() {
                 </div>
               )}
 
-              <div className="space-y-6 mb-12">
+              <div className="space-y-6 mb-12" onTouchStart={(e) => e.stopPropagation()}>
                 <div className={`bg-black/40 border border-white/20 rounded-2xl p-8 transition-all duration-300 shadow-lg ${
                   currentAudioStep === 'training' 
                     ? 'bg-blue-500/20 border-blue-400/30 scale-105' 
@@ -2521,6 +2727,9 @@ export function LanguageSelector() {
                 handleSignOut={handleSignOut}
                 getFlagIcon={getFlagIcon}
                 completedTopicIds={completedTopicIds}
+                currentSection={currentSection}
+                setCurrentSection={setCurrentSection}
+                lastTopicSectionRef={lastTopicSectionRef}
               />
             </div>
 
@@ -2546,167 +2755,184 @@ export function LanguageSelector() {
             </div>
           </div>
         )}
-
-        {showSettings && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className={`bg-white/5 backdrop-blur-2xl border border-white/15 rounded-[32px] p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl ${isIOS ? 'ios-glass-override' : ''}`}>
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-medium text-white">Settings</h2>
-                <button
-                  onClick={handleSettingsClose}
-                  className="w-10 h-10 bg-black/20 backdrop-blur-sm border border-white/10 rounded-full flex items-center justify-center hover:bg-black/30 transition-all duration-300"
-                >
-                  <X className="w-5 h-5 text-white/80" />
-                </button>
-              </div>
-
-              <div className="space-y-8">
-                {/* Autoplay Section */}
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-6">Playback</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white/80 text-sm">Auto-play</p>
-                        <p className="text-white/50 text-xs">Automatically play audio when words change</p>
-                      </div>
-                      <button
-                        onClick={() => updateSetting("autoPlay", !settings.autoPlay)}
-                        className={`w-12 h-6 rounded-full transition-all duration-300 ${
-                          settings.autoPlay 
-                            ? "bg-blue-500" 
-                            : "bg-black/30 border border-white/20"
-                        }`}
-                      >
-                        <div className={`w-5 h-5 bg-white rounded-full transition-all duration-300 ${
-                          settings.autoPlay ? "translate-x-6" : "translate-x-0.5"
-                        }`} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pace Section */}
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-6">Pace</h3>
-
-                  <div className="space-y-6">
-                    <div>
-                      <p className="text-white/80 text-sm mb-3">Pronunciation Speed:</p>
-                      <div className="flex gap-3">
-                        {["Slow", "Normal", "Fast"].map((speed) => (
-                          <button
-                            key={speed}
-                            onClick={() => {
-                              console.log(`Pronunciation speed button clicked: ${speed}`)
-                              updateSetting("pronunciationSpeed", speed)
-                            }}
-                            className={`px-6 py-3 rounded-xl transition-all duration-300 ${
-                              settings.pronunciationSpeed === speed
-                                ? "bg-white/20 border border-white/30 text-white"
-                                : "bg-black/20 border border-white/10 text-white/70 hover:bg-black/30"
-                            }`}
-                          >
-                            {speed}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-white/80 text-sm mb-3">Pause Duration between translations:</p>
-                      <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                        <input
-                          type="range"
-                          min="0.2"
-                          max="10"
-                          step="0.1"
-                          value={settings.pauseBetweenTranslations}
-                          onChange={(e) => updateSetting("pauseBetweenTranslations", Number.parseFloat(e.target.value))}
-                          className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-white/60 text-xs mt-2">
-                          <span>0.2s</span>
-                          <span className="text-white">{settings.pauseBetweenTranslations}s</span>
-                          <span>10s</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-white/80 text-sm mb-3">Pause Duration for the next word:</p>
-                      <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                        <input
-                          type="range"
-                          min="0.2"
-                          max="10"
-                          step="0.1"
-                          value={settings.pauseForNextWord}
-                          onChange={(e) => updateSetting("pauseForNextWord", Number.parseFloat(e.target.value))}
-                          className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-white/60 text-xs mt-2">
-                          <span>0.2s</span>
-                          <span className="text-white">{settings.pauseForNextWord}s</span>
-                          <span>10s</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-white/80 text-sm mb-3">Repeat Target Language Word:</p>
-                      <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                        <input
-                          type="range"
-                          min="1"
-                          max="5"
-                          step="1"
-                          value={settings.repeatTargetLanguage}
-                          onChange={(e) => updateSetting("repeatTargetLanguage", Number.parseInt(e.target.value))}
-                          className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-white/60 text-xs mt-2">
-                          <span>1x</span>
-                          <span className="text-white">{settings.repeatTargetLanguage}x</span>
-                          <span>5x</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-white/80 text-sm mb-3">Repeat Main Language Word:</p>
-                      <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                        <input
-                          type="range"
-                          min="1"
-                          max="5"
-                          step="1"
-                          value={settings.repeatMainLanguage}
-                          onChange={(e) => updateSetting("repeatMainLanguage", Number.parseInt(e.target.value))}
-                          className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-white/60 text-xs mt-2">
-                          <span>1x</span>
-                          <span className="text-white">{settings.repeatMainLanguage}x</span>
-                          <span>5x</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleSettingsClose}
-                className="w-full mt-8 bg-black/20 backdrop-blur-sm border border-white/10 hover:bg-black/30 text-white font-medium rounded-2xl h-12"
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Settings Modal - Outside main container to avoid background blur */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className={`bg-white/5 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-[32px] p-4 sm:p-6 md:p-8 w-full max-w-md sm:max-w-lg max-h-[85vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl ${isIOS ? 'ios-glass-override' : ''}`}>
+            <div className="flex items-center justify-end mb-4 sm:mb-6 md:mb-8">
+              <button
+                onClick={handleSettingsClose}
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-black/20 backdrop-blur-sm border border-white/10 rounded-full flex items-center justify-center hover:bg-black/30 transition-all duration-300 flex-shrink-0"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5 text-white/80" />
+              </button>
+            </div>
+
+            <div className="space-y-6 sm:space-y-8">
+              {/* Playback Options */}
+              <div>
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white/80 text-sm">Auto-play</p>
+                      <p className="text-white/50 text-xs">Automatically play audio when words change</p>
+                    </div>
+                    <button
+                      onClick={() => updateSetting("autoPlay", !settings.autoPlay)}
+                      className={`w-11 h-6 sm:w-12 sm:h-6 rounded-full transition-all duration-300 flex-shrink-0 ${
+                        settings.autoPlay 
+                          ? "bg-blue-500" 
+                          : "bg-black/30 border border-white/20"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full transition-all duration-300 ${
+                        settings.autoPlay ? "translate-x-5 sm:translate-x-6" : "translate-x-0.5"
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white/80 text-sm">Play target language only</p>
+                      <p className="text-white/50 text-xs">Skip native language translation</p>
+                    </div>
+                    <button
+                      onClick={() => updateSetting("playTargetOnly", !settings.playTargetOnly)}
+                      className={`w-11 h-6 sm:w-12 sm:h-6 rounded-full transition-all duration-300 flex-shrink-0 ${
+                        settings.playTargetOnly 
+                          ? "bg-blue-500" 
+                          : "bg-black/30 border border-white/20"
+                      }`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full transition-all duration-300 ${
+                        settings.playTargetOnly ? "translate-x-5 sm:translate-x-6" : "translate-x-0.5"
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pace Section */}
+              <div>
+                <h3 className="text-base sm:text-lg font-medium text-white mb-3 sm:mb-4">Pace</h3>
+
+                <div className="space-y-4 sm:space-y-6">
+                  <div>
+                    <p className="text-white/80 text-sm mb-2 sm:mb-3">Pronunciation Speed:</p>
+                    <div className="flex gap-2 sm:gap-3">
+                      {["Slow", "Normal", "Fast"].map((speed) => (
+                        <button
+                          key={speed}
+                          onClick={() => {
+                            console.log(`Pronunciation speed button clicked: ${speed}`)
+                            updateSetting("pronunciationSpeed", speed)
+                          }}
+                          className={`flex-1 px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base transition-all duration-300 ${
+                            settings.pronunciationSpeed === speed
+                              ? "bg-white/20 border border-white/30 text-white"
+                              : "bg-black/20 border border-white/10 text-white/70 hover:bg-black/30"
+                          }`}
+                        >
+                          {speed}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-white/80 text-sm mb-2 sm:mb-3">Pause Duration between translations:</p>
+                    <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-3 sm:p-4">
+                      <input
+                        type="range"
+                        min="0.2"
+                        max="10"
+                        step="0.1"
+                        value={settings.pauseBetweenTranslations}
+                        onChange={(e) => updateSetting("pauseBetweenTranslations", Number.parseFloat(e.target.value))}
+                        className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      <div className="flex justify-between text-white/60 text-xs mt-2">
+                        <span>0.2s</span>
+                        <span className="text-white font-medium">{settings.pauseBetweenTranslations}s</span>
+                        <span>10s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-white/80 text-sm mb-2 sm:mb-3">Pause Duration for the next word:</p>
+                    <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-3 sm:p-4">
+                      <input
+                        type="range"
+                        min="0.2"
+                        max="10"
+                        step="0.1"
+                        value={settings.pauseForNextWord}
+                        onChange={(e) => updateSetting("pauseForNextWord", Number.parseFloat(e.target.value))}
+                        className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      <div className="flex justify-between text-white/60 text-xs mt-2">
+                        <span>0.2s</span>
+                        <span className="text-white font-medium">{settings.pauseForNextWord}s</span>
+                        <span>10s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-white/80 text-sm mb-2 sm:mb-3">Repeat Target Language Word:</p>
+                    <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-3 sm:p-4">
+                      <input
+                        type="range"
+                        min="1"
+                        max="5"
+                        step="1"
+                        value={settings.repeatTargetLanguage}
+                        onChange={(e) => updateSetting("repeatTargetLanguage", Number.parseInt(e.target.value))}
+                        className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      <div className="flex justify-between text-white/60 text-xs mt-2">
+                        <span>1x</span>
+                        <span className="text-white font-medium">{settings.repeatTargetLanguage}x</span>
+                        <span>5x</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-white/80 text-sm mb-2 sm:mb-3">Repeat Main Language Word:</p>
+                    <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-3 sm:p-4">
+                      <input
+                        type="range"
+                        min="1"
+                        max="5"
+                        step="1"
+                        value={settings.repeatMainLanguage}
+                        onChange={(e) => updateSetting("repeatMainLanguage", Number.parseInt(e.target.value))}
+                        className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                      />
+                      <div className="flex justify-between text-white/60 text-xs mt-2">
+                        <span>1x</span>
+                        <span className="text-white font-medium">{settings.repeatMainLanguage}x</span>
+                        <span>5x</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSettingsClose}
+              className="w-full mt-6 sm:mt-8 bg-black/20 backdrop-blur-sm border border-white/10 hover:bg-black/30 text-white font-medium rounded-xl sm:rounded-2xl h-11 sm:h-12"
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Paywall Modal */}
       <PaywallModal
