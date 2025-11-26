@@ -106,7 +106,7 @@ Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
 }
 
 // Template fallback when API unavailable
-function getTemplateFallback(word: string, translation: string, targetLang: string, nativeLang: string) {
+function getTemplateFallback(word: string, translation: string, targetLang: string, nativeLang: string): { sentence: string, translation: string } {
   const patterns: { [key: string]: Array<{pattern: string, native: string}> } = {
     'German': [
       { pattern: `Ich brauche ${word}.`, native: `I need ${translation}.` },
@@ -128,7 +128,10 @@ function getTemplateFallback(word: string, translation: string, targetLang: stri
   const langPatterns = patterns[targetLang]
   if (langPatterns) {
     const random = Math.floor(Math.random() * langPatterns.length)
-    return langPatterns[random]
+    return {
+      sentence: langPatterns[random].pattern,
+      translation: langPatterns[random].native
+    }
   }
 
   return {
