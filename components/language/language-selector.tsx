@@ -6,6 +6,8 @@ import { Topic, VocabularyWord, VocabularyResponse, getTopics, getVocabularyForT
 import { useAuth } from "@/contexts/auth-context"
 import { PaywallModal } from "@/components/paywall/paywall-modal"
 import { ProgressStats } from "@/components/progress/progress-stats"
+import { ExampleSentenceModal } from "@/components/learning/example-sentence-modal"
+import { useLongPress } from "@/hooks/use-long-press"
 
 declare global {
   interface Window {
@@ -352,11 +354,11 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
   return (
     <div className="h-full flex flex-col">
       {/* Section title */}
-      <div className="mb-1 sm:mb-1.5 md:mb-2 px-2 sm:px-3 py-0.5 sm:py-1 flex-shrink-0">
-        <h2 className="font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-white">
-          <span className="text-base sm:text-lg md:text-2xl tracking-wide">{currentSectionData.name}</span>
+      <div className="mb-2 px-3 py-1 flex-shrink-0">
+        <h2 className="font-medium flex items-center justify-center gap-2 text-white">
+          <span className="text-lg sm:text-2xl tracking-wide">{currentSectionData.name}</span>
           <div 
-            className="w-4 h-4 sm:w-5 sm:h-5 md:w-7 md:h-7 flex-shrink-0" 
+            className="w-5 h-5 sm:w-7 sm:h-7 flex-shrink-0" 
             style={{ color: 'currentColor' }}
             dangerouslySetInnerHTML={{ __html: currentSectionData.icon }}
           />
@@ -383,7 +385,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
             <div key={sectionIndex} className="w-full flex-shrink-0 px-2 overflow-hidden">
               {/* Account section special content */}
               {section.isAccount ? (
-                <div className="h-full flex flex-col space-y-1.5 sm:space-y-2.5 md:space-y-3">
+                <div className="h-full flex flex-col space-y-2.5 sm:space-y-3">
                   {/* Progress Section with Real Data */}
                   {targetLanguageCode && (
                     <ProgressStats 
@@ -393,10 +395,10 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                   )}
 
                   {/* Merged User Info, Subscription, and Sign Out */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/20 space-y-2 sm:space-y-3">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20 space-y-3 sm:space-y-4">
                     {/* User Profile Info */}
-                    <div className="flex items-center space-x-2">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
                         {user?.avatarUrl ? (
                           <img 
                             src={user.avatarUrl} 
@@ -408,17 +410,17 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-white font-semibold text-sm sm:text-base md:text-lg truncate">
+                        <h3 className="text-white font-semibold text-base sm:text-lg truncate">
                           {user?.fullName || user?.email?.split('@')[0] || 'User'}
                         </h3>
-                        <p className="text-white/70 text-[10px] sm:text-xs truncate">{user?.email}</p>
+                        <p className="text-white/70 text-xs sm:text-sm truncate">{user?.email}</p>
                       </div>
                     </div>
 
                     {/* Subscription Status */}
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-white font-medium text-xs sm:text-sm md:text-base flex items-center space-x-1 sm:space-x-1.5">
-                        <Icon icon="solar:crown-bold" width="16" height="16" className="text-yellow-400 sm:w-[18px] sm:h-[18px]" />
+                      <h4 className="text-white font-medium text-sm sm:text-base flex items-center space-x-1.5 sm:space-x-2">
+                        <Icon icon="solar:crown-bold" width="18" height="18" className="text-yellow-400 sm:w-5 sm:h-5" />
                         <span>Subscription</span>
                       </h4>
                       <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-gray-500/20 text-gray-300 border border-gray-500/30">
@@ -428,7 +430,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                     
                     <button
                       onClick={() => setShowPaywall(true)}
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-1.5 sm:py-2 md:py-2.5 px-3 sm:px-4 rounded-lg font-medium text-xs sm:text-sm hover:from-blue-600 hover:to-purple-700 transition-all"
+                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg font-medium text-xs sm:text-sm hover:from-blue-600 hover:to-purple-700 transition-all"
                     >
                       Upgrade to Premium
                     </button>
@@ -436,9 +438,9 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                     {/* Sign Out Button */}
                     <button
                       onClick={handleSignOut}
-                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-1.5 sm:py-2 md:py-2.5 px-3 sm:px-4 rounded-lg font-medium text-xs sm:text-sm hover:bg-white/20 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2"
+                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg font-medium text-sm hover:bg-white/20 transition-all flex items-center justify-center space-x-2"
                     >
-                      <Icon icon="solar:logout-3-bold" width="16" height="16" className="sm:w-[18px] sm:h-[18px]" />
+                      <Icon icon="solar:logout-3-bold" width="18" height="18" className="sm:w-5 sm:h-5" />
                       <span>Sign Out</span>
                     </button>
                   </div>
@@ -459,7 +461,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
       </div>
 
       {/* Navigation dots - enhanced visibility with drag feedback */}
-      <div className="flex justify-center gap-2 sm:gap-3 mt-1.5 sm:mt-2 md:mt-3 pb-1 sm:pb-1.5 md:pb-2 flex-shrink-0">
+      <div className="flex justify-center gap-3 mt-3 pb-2 flex-shrink-0">
         {sections.map((section, index) => {
           // Calculate opacity based on drag position for visual feedback
           let opacity = index === currentSection ? 1 : 0.4
@@ -491,12 +493,12 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
             >
               {/* Add text labels for first two sections */}
               {index === 0 && (
-                <span className="absolute -bottom-4 sm:-bottom-5 md:-bottom-6 left-1/2 transform -translate-x-1/2 text-[10px] sm:text-xs text-white/80 whitespace-nowrap">
+                <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-white/80 whitespace-nowrap">
                   Account
                 </span>
               )}
               {index === 1 && (
-                <span className="absolute -bottom-4 sm:-bottom-5 md:-bottom-6 left-1/2 transform -translate-x-1/2 text-[10px] sm:text-xs text-white/80 whitespace-nowrap">
+                <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-white/80 whitespace-nowrap">
                   First Aid
                 </span>
               )}
@@ -565,6 +567,7 @@ export function LanguageSelector() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [currentSection, setCurrentSection] = useState(1) // Start with FIRST AID KIT (index 1)
   const lastTopicSectionRef = useRef(1) // Track which section the user was on when selecting a topic
+  const [showExampleSentence, setShowExampleSentence] = useState(false)
   
   // Autoplay state machine
   const autoplayAbortController = useRef<AbortController | null>(null)
@@ -2636,8 +2639,8 @@ export function LanguageSelector() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-2 sm:px-3 h-full max-h-[95vh] sm:max-h-[90vh] flex items-center">
-      <div className={`bg-white/5 backdrop-blur-3xl border border-white/15 rounded-2xl sm:rounded-3xl px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 shadow-2xl transform transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl w-full max-h-full overflow-hidden ${isTransitioning ? 'bg-white/10' : 'bg-white/5'}`}>
+    <div className="w-full max-w-2xl mx-auto px-2 sm:px-3 h-full max-h-[90vh] sm:max-h-[85vh] flex items-center">
+      <div className={`bg-white/5 backdrop-blur-3xl border border-white/15 rounded-2xl sm:rounded-3xl px-3 sm:px-5 md:px-7 py-4 sm:py-5 md:py-6 shadow-2xl transform transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl w-full max-h-full overflow-hidden ${isTransitioning ? 'bg-white/10' : 'bg-white/5'}`}>
         {isLoading && (
           <div className="text-center mb-4">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
@@ -2713,7 +2716,12 @@ export function LanguageSelector() {
               )}
 
               <div className="space-y-6 mb-12" onTouchStart={(e) => e.stopPropagation()}>
-                <div className={`bg-black/40 border border-white/20 rounded-2xl p-8 transition-all duration-300 shadow-lg ${
+                <div 
+                  {...useLongPress({
+                    onLongPress: () => setShowExampleSentence(true),
+                    delay: 600
+                  })}
+                  className={`bg-black/40 border border-white/20 rounded-2xl p-8 transition-all duration-300 shadow-lg cursor-pointer select-none ${
                   currentAudioStep === 'training' 
                     ? 'bg-blue-500/20 border-blue-400/30 scale-105' 
                     : 'bg-black/40'
@@ -2725,6 +2733,7 @@ export function LanguageSelector() {
                     )}
                   </div>
                   <p className="text-white text-2xl font-medium">{getCurrentContent().sourceWord}</p>
+                  <p className="text-white/40 text-xs mt-2">💡 Long-press for example</p>
                 </div>
                 <div className={`bg-black/40 border border-white/20 rounded-2xl p-8 transition-all duration-300 shadow-lg ${
                   currentAudioStep === 'main' 
@@ -2834,7 +2843,7 @@ export function LanguageSelector() {
         {currentPage === "confirmation" && (
           <div className="text-center transition-all duration-500 ease-in-out h-full flex flex-col min-h-0">
             {/* iPhone-style sliding topics interface */}
-            <div className="flex-1 mb-2 sm:mb-3 md:mb-4 min-h-0 overflow-hidden">
+            <div className="flex-1 mb-4 min-h-0 overflow-hidden">
               <TopicSlider 
                 topics={topics}
                 selectedTopic={selectedTopic}
@@ -2859,28 +2868,39 @@ export function LanguageSelector() {
             </div>
 
             {/* Language selector at bottom */}
-            <div className="flex-shrink-0 px-2 sm:px-3 pb-2 sm:pb-3">
-              <div className="flex items-center justify-center gap-2 sm:gap-3 max-w-full">
+            <div className="flex-shrink-0 px-3 pb-3">
+              <div className="flex items-center justify-center gap-3 max-w-full">
                 <button
                   onClick={() => handleConfirmationLanguageChange("native")}
-                  className="bg-black/40 border border-white/20 rounded-lg sm:rounded-xl p-2 sm:p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
+                  className="bg-black/40 border border-white/20 rounded-xl p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
                 >
-                  <p className="text-white font-medium text-xs sm:text-sm truncate">{nativeLanguage}</p>
+                  <p className="text-white font-medium text-sm truncate">{nativeLanguage}</p>
                 </button>
                 <div className="flex items-center justify-center flex-shrink-0">
-                  <Languages className="w-4 h-4 sm:w-5 sm:h-5 text-white/60" />
+                  <Languages className="w-5 h-5 text-white/60" />
                 </div>
                 <button
                   onClick={() => handleConfirmationLanguageChange("target")}
-                  className="bg-black/40 border border-white/20 rounded-lg sm:rounded-xl p-2 sm:p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
+                  className="bg-black/40 border border-white/20 rounded-xl p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
                 >
-                  <p className="text-white font-medium text-xs sm:text-sm truncate">{targetLanguage}</p>
+                  <p className="text-white font-medium text-sm truncate">{targetLanguage}</p>
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Example Sentence Modal */}
+      {showExampleSentence && (
+        <ExampleSentenceModal
+          word={getCurrentContent().sourceWord}
+          translation={getCurrentContent().targetWord}
+          targetLanguage={targetLanguage}
+          nativeLanguage={nativeLanguage}
+          onClose={() => setShowExampleSentence(false)}
+        />
+      )}
 
       {/* Settings Modal - Outside main container to avoid background blur */}
       {showSettings && (

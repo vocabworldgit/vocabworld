@@ -80,16 +80,16 @@ export function ProgressStats({ targetLanguageCode, targetLanguageName }: { targ
   if (!stats) return null
 
   return (
-    <div className="space-y-1.5 sm:space-y-2 md:space-y-3">
-      <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/20">
-        <div className="flex items-center justify-between gap-2 mb-1.5 sm:mb-2">
-          <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-            <h3 className="font-semibold text-white text-xs sm:text-sm md:text-base truncate">{targetLanguageName} Progress</h3>
-            <Icon icon={getFlagIcon(targetLanguageCode)} className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex-shrink-0" />
+    <div className="space-y-3 sm:space-y-4">
+      <div className="bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-white/20">
+        <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <h3 className="font-semibold text-white text-sm sm:text-base truncate">{targetLanguageName} Progress</h3>
+            <Icon icon={getFlagIcon(targetLanguageCode)} className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
           </div>
-          <p className="text-[10px] sm:text-xs md:text-sm font-medium text-white/90 whitespace-nowrap">{Math.round(stats.languageCompletionPercentage)}%</p>
+          <p className="text-xs sm:text-sm font-medium text-white/90 whitespace-nowrap">{Math.round(stats.languageCompletionPercentage)}%</p>
         </div>
-        <div className="h-1.5 sm:h-2 md:h-3 bg-white/10 rounded-full overflow-hidden">
+        <div className="h-2 sm:h-3 bg-white/10 rounded-full overflow-hidden">
           <div 
             className="h-full bg-gradient-to-r from-indigo-500 to-pink-500 transition-all duration-500" 
             style={{ width: `${Math.min(stats.languageCompletionPercentage, 100)}%` }} 
@@ -97,37 +97,37 @@ export function ProgressStats({ targetLanguageCode, targetLanguageName }: { targ
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-3">
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 sm:p-3 md:p-4 border border-white/20">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-1 sm:mb-1.5">
-            <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 border border-white/20">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-1.5 sm:mb-2">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
-          <div className="text-lg sm:text-xl md:text-2xl font-bold text-white">{stats.wordsLearned}</div>
-          <div className="text-[9px] sm:text-[10px] md:text-xs text-white/90">Words Learned</div>
+          <div className="text-xl sm:text-2xl font-bold text-white">{stats.wordsLearned}</div>
+          <div className="text-[10px] sm:text-xs text-white/90">Words Learned</div>
         </div>
         
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 sm:p-3 md:p-4 border border-white/20">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-1 sm:mb-1.5">
-            <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 border border-white/20">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-1.5 sm:mb-2">
+            <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
-          <div className="text-lg sm:text-xl md:text-2xl font-bold text-white">{stats.dailyLoginStreak}</div>
-          <div className="text-[9px] sm:text-[10px] md:text-xs text-white/90">Day Streak</div>
+          <div className="text-xl sm:text-2xl font-bold text-white">{stats.dailyLoginStreak}</div>
+          <div className="text-[10px] sm:text-xs text-white/90">Day Streak</div>
         </div>
         
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 sm:p-3 md:p-4 border border-white/20">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-1 sm:mb-1.5">
-            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 border border-white/20">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-1.5 sm:mb-2">
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
-          <div className="text-lg sm:text-xl md:text-2xl font-bold text-white">{stats.wordsLearnedToday}</div>
-          <div className="text-[9px] sm:text-[10px] md:text-xs text-white/90">Today</div>
+          <div className="text-xl sm:text-2xl font-bold text-white">{stats.wordsLearnedToday}</div>
+          <div className="text-[10px] sm:text-xs text-white/90">Today</div>
         </div>
         
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 sm:p-3 md:p-4 border border-white/20">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-1 sm:mb-1.5">
-            <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 border border-white/20">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-1.5 sm:mb-2">
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
-          <div className="text-lg sm:text-xl md:text-2xl font-bold text-white">{stats.topicsCompleted}</div>
-          <div className="text-[9px] sm:text-[10px] md:text-xs text-white/90">Topics Done</div>
+          <div className="text-xl sm:text-2xl font-bold text-white">{stats.topicsCompleted}</div>
+          <div className="text-[10px] sm:text-xs text-white/90">Topics Done</div>
         </div>
       </div>
     </div>
