@@ -70,7 +70,7 @@ export async function POST(request: Request) {
             t.lang === nativeLangCode
           )
           
-          if (translationObj) {
+          if (translationObj && translationObj.text) {
             console.log('✅ Found matching sentence with translation')
             return NextResponse.json({
               sentence: sentence,
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
           
           // If no exact language match, use first English translation
           const engTranslation = result.translations.find((t: any) => t.lang === 'eng')
-          if (engTranslation) {
+          if (engTranslation && engTranslation.text) {
             console.log('✅ Using English translation')
             return NextResponse.json({
               sentence: sentence,
@@ -89,12 +89,36 @@ export async function POST(request: Request) {
           }
           
           // Use any available translation
-          if (result.translations[0]) {
+          if (result.translations[0] && result.translations[0].text) {
             console.log('✅ Using first available translation')
             return NextResponse.json({
               sentence: sentence,
               translation: result.translations[0].text
             })
+          }
+        }
+        
+        // If we have a sentence but no translation, try to get one from Google Translate free API
+        if (sentence) {
+          console.log('🔄 Sentence found but no translation, using Google Translate')
+          try {
+            const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${targetLangCode}&tl=${nativeLangCode}&dt=t&q=${encodeURIComponent(sentence)}`
+            const translateRes = await fetch(translateUrl)
+            
+            if (translateRes.ok) {
+              const translateData = await translateRes.json()
+              const translatedText = translateData[0]?.map((item: any) => item[0]).join('')
+              
+              if (translatedText) {
+                console.log('✅ Got translation from Google Translate')
+                return NextResponse.json({
+                  sentence: sentence,
+                  translation: translatedText
+                })
+              }
+            }
+          } catch (translateError) {
+            console.warn('⚠️ Google Translate failed:', translateError)
           }
         }
       }
