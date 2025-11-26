@@ -4,38 +4,37 @@ export async function POST(request: Request) {
   try {
     const { word, translation, targetLanguage, nativeLanguage } = await request.json()
 
+    console.log('🔍 Example sentence request:', { word, targetLanguage, nativeLanguage })
+
     // Use Google Gemini Free API to generate example sentences
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
     if (!GEMINI_API_KEY) {
-      // Fallback to simple template-based examples if no API key
-      return NextResponse.json({
-        sentence: `This is ${word}.`,
-        translation: `This is ${translation}.`
-      })
+      console.warn('⚠️ No Gemini API key found - using better fallback')
+      // Better fallback without "This is"
+      const fallbackExamples = getBetterFallback(word, translation, targetLanguage, nativeLanguage)
+      return NextResponse.json(fallbackExamples)
     }
 
-    const prompt = `You are a language learning assistant. Create a simple, practical example sentence for a beginner learner.
+    const prompt = `Create a simple example sentence for language learning.
 
-Word: "${word}" (in ${targetLanguage})
-Translation: "${translation}" (in ${nativeLanguage})
+Word to use: "${word}"
+Language: ${targetLanguage}
+Translation: "${translation}" (${nativeLanguage})
 
-Create ONE short, simple sentence using "${word}" that a beginner can understand. The sentence should:
-- Be in ${targetLanguage} (the language being learned)
-- Use everyday, common words
-- Be practical and useful for real conversations
-- Be clear and easy to understand for beginners
-- Maximum 8-10 words
+Requirements:
+1. Write ONE natural sentence in ${targetLanguage} using "${word}"
+2. Make it conversational and realistic
+3. Use simple grammar suitable for beginners
+4. Keep it under 10 words
+5. Translate the full sentence to ${nativeLanguage}
 
-Then provide the translation of that sentence in ${nativeLanguage}.
+IMPORTANT: The sentence MUST be in ${targetLanguage}, NOT English.
 
-Format your response as JSON:
-{
-  "sentence": "simple sentence in ${targetLanguage} using ${word}",
-  "translation": "translation of that sentence in ${nativeLanguage}"
-}
+Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
+{"sentence":"your sentence in ${targetLanguage}","translation":"translation in ${nativeLanguage}"}`
 
-Keep it conversational and beginner-friendly.`
+    console.log('🤖 Calling Gemini API...')
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
@@ -51,52 +50,83 @@ Keep it conversational and beginner-friendly.`
             }]
           }],
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 200,
+            temperature: 0.9,
+            maxOutputTokens: 150,
           }
         })
       }
     )
 
     if (!response.ok) {
-      throw new Error('Gemini API request failed')
+      const errorText = await response.text()
+      console.error('❌ Gemini API error:', response.status, errorText)
+      throw new Error(`Gemini API request failed: ${response.status}`)
     }
 
     const data = await response.json()
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    
+    console.log('📝 Gemini response:', generatedText)
 
     // Try to parse JSON from the response
     try {
-      // Extract JSON from markdown code blocks if present
-      const jsonMatch = generatedText.match(/```json\s*([\s\S]*?)\s*```/) || 
-                       generatedText.match(/\{[\s\S]*\}/)
+      // Remove markdown code blocks if present
+      let cleanText = generatedText.trim()
+      cleanText = cleanText.replace(/```json\s*/g, '').replace(/```\s*/g, '')
+      
+      // Find JSON object
+      const jsonMatch = cleanText.match(/\{[^}]*"sentence"[^}]*"translation"[^}]*\}/s)
       
       if (jsonMatch) {
-        const jsonText = jsonMatch[1] || jsonMatch[0]
-        const parsed = JSON.parse(jsonText)
+        const parsed = JSON.parse(jsonMatch[0])
+        
+        console.log('✅ Parsed successfully:', parsed)
         
         return NextResponse.json({
-          sentence: parsed.sentence || `Example: ${word}`,
-          translation: parsed.translation || `Example: ${translation}`
+          sentence: parsed.sentence || getBetterFallback(word, translation, targetLanguage, nativeLanguage).sentence,
+          translation: parsed.translation || getBetterFallback(word, translation, targetLanguage, nativeLanguage).translation
         })
+      } else {
+        console.warn('⚠️ No JSON match found in response')
       }
     } catch (parseError) {
-      console.error('Failed to parse Gemini response:', parseError)
+      console.error('❌ Failed to parse Gemini response:', parseError)
+      console.error('Raw text:', generatedText)
     }
 
-    // Fallback to simple example
-    return NextResponse.json({
-      sentence: `Example with ${word}`,
-      translation: `Example with ${translation}`
-    })
+    // Fallback to better example
+    console.log('⚠️ Using fallback')
+    return NextResponse.json(getBetterFallback(word, translation, targetLanguage, nativeLanguage))
 
   } catch (error) {
-    console.error('Error generating example sentence:', error)
+    console.error('❌ Error generating example sentence:', error)
+    const { word, translation, targetLanguage, nativeLanguage } = await request.json()
     
-    // Return fallback example
-    return NextResponse.json({
-      sentence: `This is an example.`,
-      translation: `This is an example.`
-    })
+    // Return better fallback
+    return NextResponse.json(getBetterFallback(word, translation, targetLanguage, nativeLanguage))
+  }
+}
+
+// Better fallback function with language-specific examples
+function getBetterFallback(word: string, translation: string, targetLanguage: string, nativeLanguage: string) {
+  // Language-specific patterns for better fallbacks
+  const patterns: { [key: string]: (w: string, t: string) => { sentence: string, translation: string } } = {
+    'German': (w, t) => ({ sentence: `Ich brauche ${w}.`, translation: `I need ${t}.` }),
+    'French': (w, t) => ({ sentence: `J'ai ${w}.`, translation: `I have ${t}.` }),
+    'Spanish': (w, t) => ({ sentence: `Necesito ${w}.`, translation: `I need ${t}.` }),
+    'Italian': (w, t) => ({ sentence: `Ho ${w}.`, translation: `I have ${t}.` }),
+    'Portuguese': (w, t) => ({ sentence: `Eu tenho ${w}.`, translation: `I have ${t}.` }),
+  }
+
+  const pattern = patterns[targetLanguage]
+  
+  if (pattern) {
+    return pattern(word, translation)
+  }
+
+  // Generic fallback for other languages
+  return {
+    sentence: `${word}...`,
+    translation: `${translation}...`
   }
 }
