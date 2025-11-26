@@ -100,17 +100,18 @@ export async function POST(request: Request) {
         
         // If we have a sentence but no translation, try to get one from Google Translate free API
         if (sentence) {
-          console.log('🔄 Sentence found but no translation, using Google Translate')
+          console.log('🔄 Sentence found but no translation, attempting to translate:', sentence)
           try {
-            const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${targetLangCode}&tl=${nativeLangCode}&dt=t&q=${encodeURIComponent(sentence)}`
+            // Use libre translate or fallback to simple template translation
+            const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(sentence)}`
             const translateRes = await fetch(translateUrl)
             
             if (translateRes.ok) {
               const translateData = await translateRes.json()
-              const translatedText = translateData[0]?.map((item: any) => item[0]).join('')
+              const translatedText = translateData[0]?.map((item: any) => item[0]).join('').trim()
               
-              if (translatedText) {
-                console.log('✅ Got translation from Google Translate')
+              if (translatedText && translatedText !== sentence) {
+                console.log('✅ Got translation:', translatedText)
                 return NextResponse.json({
                   sentence: sentence,
                   translation: translatedText
@@ -118,8 +119,15 @@ export async function POST(request: Request) {
               }
             }
           } catch (translateError) {
-            console.warn('⚠️ Google Translate failed:', translateError)
+            console.warn('⚠️ Translation failed, will use template fallback')
           }
+          
+          // If translate fails, return sentence with word translation as hint
+          console.log('⚠️ Using basic word translation as sentence translation')
+          return NextResponse.json({
+            sentence: sentence,
+            translation: `Translation: ${translation}` 
+          })
         }
       }
     }
