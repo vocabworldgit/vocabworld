@@ -58,77 +58,41 @@ export async function POST(request: Request) {
     
     console.log('📝 Tatoeba response:', JSON.stringify(data, null, 2))
 
-    // Get sentences with translations
+    // Get sentences from Tatoeba
     if (data.results && data.results.length > 0) {
-      for (const result of data.results) {
-        const sentence = result.text
+      // Get first sentence that contains the word
+      const sentence = data.results[0].text
+      
+      if (sentence) {
+        console.log('✅ Found sentence from Tatoeba:', sentence)
+        console.log('🔄 Translating to native language:', nativeLanguage)
         
-        // Look for translation in native language
-        if (result.translations && result.translations.length > 0) {
-          // Find translation in user's native language
-          const translationObj = result.translations.find((t: any) => 
-            t.lang === nativeLangCode
-          )
+        // Always translate the sentence to user's native language using Google Translate
+        try {
+          const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${nativeLangCode}&dt=t&q=${encodeURIComponent(sentence)}`
+          const translateRes = await fetch(translateUrl)
           
-          if (translationObj && translationObj.text) {
-            console.log('✅ Found matching sentence with translation')
-            return NextResponse.json({
-              sentence: sentence,
-              translation: translationObj.text
-            })
-          }
-          
-          // If no exact language match, use first English translation
-          const engTranslation = result.translations.find((t: any) => t.lang === 'eng')
-          if (engTranslation && engTranslation.text) {
-            console.log('✅ Using English translation')
-            return NextResponse.json({
-              sentence: sentence,
-              translation: engTranslation.text
-            })
-          }
-          
-          // Use any available translation
-          if (result.translations[0] && result.translations[0].text) {
-            console.log('✅ Using first available translation')
-            return NextResponse.json({
-              sentence: sentence,
-              translation: result.translations[0].text
-            })
-          }
-        }
-        
-        // If we have a sentence but no translation, try to get one from Google Translate free API
-        if (sentence) {
-          console.log('🔄 Sentence found but no translation, attempting to translate:', sentence)
-          try {
-            // Use libre translate or fallback to simple template translation
-            const translateUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(sentence)}`
-            const translateRes = await fetch(translateUrl)
+          if (translateRes.ok) {
+            const translateData = await translateRes.json()
+            const translatedText = translateData[0]?.map((item: any) => item[0]).join('').trim()
             
-            if (translateRes.ok) {
-              const translateData = await translateRes.json()
-              const translatedText = translateData[0]?.map((item: any) => item[0]).join('').trim()
-              
-              if (translatedText && translatedText !== sentence) {
-                console.log('✅ Got translation:', translatedText)
-                return NextResponse.json({
-                  sentence: sentence,
-                  translation: translatedText
-                })
-              }
+            if (translatedText && translatedText !== sentence) {
+              console.log('✅ Translated to:', translatedText)
+              return NextResponse.json({
+                sentence: sentence,
+                translation: translatedText
+              })
             }
-          } catch (translateError) {
-            console.warn('⚠️ Translation failed, will use template fallback')
           }
-          
-          // If translate fails, return sentence with word translation as hint
-          console.log('⚠️ Using basic word translation as sentence translation')
-          return NextResponse.json({
-            sentence: sentence,
-            translation: `Translation: ${translation}` 
-          })
+        } catch (translateError) {
+          console.warn('⚠️ Translation failed:', translateError)
         }
+        
+        // If translate fails, still return sentence with word hint
+        return NextResponse.json({
+          sentence: sentence,
+          translation: translation
+        })
       }
     }
 
