@@ -2636,8 +2636,8 @@ export function LanguageSelector() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-2 sm:px-3 h-full max-h-[90vh] sm:max-h-[85vh] flex items-center">
-      <div className={`bg-white/5 backdrop-blur-3xl border border-white/15 rounded-2xl sm:rounded-3xl px-3 sm:px-5 md:px-7 py-4 sm:py-5 md:py-6 shadow-2xl transform transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl w-full max-h-full overflow-hidden ${isTransitioning ? 'bg-white/10' : 'bg-white/5'}`}>
+    <div className="w-full max-w-2xl mx-auto px-2 sm:px-3 h-full max-h-[95vh] sm:max-h-[90vh] flex items-center">
+      <div className={`bg-white/5 backdrop-blur-3xl border border-white/15 rounded-2xl sm:rounded-3xl px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 shadow-2xl transform transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl w-full max-h-full overflow-hidden ${isTransitioning ? 'bg-white/10' : 'bg-white/5'}`}>
         {isLoading && (
           <div className="text-center mb-4">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
@@ -2834,7 +2834,7 @@ export function LanguageSelector() {
         {currentPage === "confirmation" && (
           <div className="text-center transition-all duration-500 ease-in-out h-full flex flex-col min-h-0">
             {/* iPhone-style sliding topics interface */}
-            <div className="flex-1 mb-4 min-h-0 overflow-hidden">
+            <div className="flex-1 mb-2 sm:mb-3 md:mb-4 min-h-0 overflow-hidden">
               <TopicSlider 
                 topics={topics}
                 selectedTopic={selectedTopic}
@@ -2859,22 +2859,22 @@ export function LanguageSelector() {
             </div>
 
             {/* Language selector at bottom */}
-            <div className="flex-shrink-0 px-3 pb-3">
-              <div className="flex items-center justify-center gap-3 max-w-full">
+            <div className="flex-shrink-0 px-2 sm:px-3 pb-2 sm:pb-3">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 max-w-full">
                 <button
                   onClick={() => handleConfirmationLanguageChange("native")}
-                  className="bg-black/40 border border-white/20 rounded-xl p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
+                  className="bg-black/40 border border-white/20 rounded-lg sm:rounded-xl p-2 sm:p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
                 >
-                  <p className="text-white font-medium text-sm truncate">{nativeLanguage}</p>
+                  <p className="text-white font-medium text-xs sm:text-sm truncate">{nativeLanguage}</p>
                 </button>
                 <div className="flex items-center justify-center flex-shrink-0">
-                  <Languages className="w-5 h-5 text-white/60" />
+                  <Languages className="w-4 h-4 sm:w-5 sm:h-5 text-white/60" />
                 </div>
                 <button
                   onClick={() => handleConfirmationLanguageChange("target")}
-                  className="bg-black/40 border border-white/20 rounded-xl p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
+                  className="bg-black/40 border border-white/20 rounded-lg sm:rounded-xl p-2 sm:p-2.5 flex-1 hover:bg-black/50 transition-all duration-300 shadow-lg min-w-0"
                 >
-                  <p className="text-white font-medium text-sm truncate">{targetLanguage}</p>
+                  <p className="text-white font-medium text-xs sm:text-sm truncate">{targetLanguage}</p>
                 </button>
               </div>
             </div>
