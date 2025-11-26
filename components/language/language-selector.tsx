@@ -352,11 +352,11 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
   return (
     <div className="h-full flex flex-col">
       {/* Section title */}
-      <div className="mb-2 px-3 py-1 flex-shrink-0">
-        <h2 className="font-medium flex items-center justify-center gap-2 text-white">
-          <span className="text-lg sm:text-2xl tracking-wide">{currentSectionData.name}</span>
+      <div className="mb-1 sm:mb-1.5 md:mb-2 px-2 sm:px-3 py-0.5 sm:py-1 flex-shrink-0">
+        <h2 className="font-medium flex items-center justify-center gap-1.5 sm:gap-2 text-white">
+          <span className="text-base sm:text-lg md:text-2xl tracking-wide">{currentSectionData.name}</span>
           <div 
-            className="w-5 h-5 sm:w-7 sm:h-7 flex-shrink-0" 
+            className="w-4 h-4 sm:w-5 sm:h-5 md:w-7 md:h-7 flex-shrink-0" 
             style={{ color: 'currentColor' }}
             dangerouslySetInnerHTML={{ __html: currentSectionData.icon }}
           />
@@ -383,7 +383,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
             <div key={sectionIndex} className="w-full flex-shrink-0 px-2 overflow-hidden">
               {/* Account section special content */}
               {section.isAccount ? (
-                <div className="h-full flex flex-col space-y-2.5 sm:space-y-3">
+                <div className="h-full flex flex-col space-y-1.5 sm:space-y-2.5 md:space-y-3">
                   {/* Progress Section with Real Data */}
                   {targetLanguageCode && (
                     <ProgressStats 
@@ -393,10 +393,10 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                   )}
 
                   {/* Merged User Info, Subscription, and Sign Out */}
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20 space-y-3 sm:space-y-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 border border-white/20 space-y-2 sm:space-y-3">
                     {/* User Profile Info */}
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
                         {user?.avatarUrl ? (
                           <img 
                             src={user.avatarUrl} 
@@ -408,17 +408,17 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-white font-semibold text-base sm:text-lg truncate">
+                        <h3 className="text-white font-semibold text-sm sm:text-base md:text-lg truncate">
                           {user?.fullName || user?.email?.split('@')[0] || 'User'}
                         </h3>
-                        <p className="text-white/70 text-xs sm:text-sm truncate">{user?.email}</p>
+                        <p className="text-white/70 text-[10px] sm:text-xs truncate">{user?.email}</p>
                       </div>
                     </div>
 
                     {/* Subscription Status */}
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-white font-medium text-sm sm:text-base flex items-center space-x-1.5 sm:space-x-2">
-                        <Icon icon="solar:crown-bold" width="18" height="18" className="text-yellow-400 sm:w-5 sm:h-5" />
+                      <h4 className="text-white font-medium text-xs sm:text-sm md:text-base flex items-center space-x-1 sm:space-x-1.5">
+                        <Icon icon="solar:crown-bold" width="16" height="16" className="text-yellow-400 sm:w-[18px] sm:h-[18px]" />
                         <span>Subscription</span>
                       </h4>
                       <div className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium bg-gray-500/20 text-gray-300 border border-gray-500/30">
@@ -428,7 +428,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                     
                     <button
                       onClick={() => setShowPaywall(true)}
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg font-medium text-xs sm:text-sm hover:from-blue-600 hover:to-purple-700 transition-all"
+                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-1.5 sm:py-2 md:py-2.5 px-3 sm:px-4 rounded-lg font-medium text-xs sm:text-sm hover:from-blue-600 hover:to-purple-700 transition-all"
                     >
                       Upgrade to Premium
                     </button>
@@ -436,9 +436,9 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
                     {/* Sign Out Button */}
                     <button
                       onClick={handleSignOut}
-                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg font-medium text-sm hover:bg-white/20 transition-all flex items-center justify-center space-x-2"
+                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-1.5 sm:py-2 md:py-2.5 px-3 sm:px-4 rounded-lg font-medium text-xs sm:text-sm hover:bg-white/20 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2"
                     >
-                      <Icon icon="solar:logout-3-bold" width="18" height="18" className="sm:w-5 sm:h-5" />
+                      <Icon icon="solar:logout-3-bold" width="16" height="16" className="sm:w-[18px] sm:h-[18px]" />
                       <span>Sign Out</span>
                     </button>
                   </div>
@@ -459,7 +459,7 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
       </div>
 
       {/* Navigation dots - enhanced visibility with drag feedback */}
-      <div className="flex justify-center gap-3 mt-3 pb-2 flex-shrink-0">
+      <div className="flex justify-center gap-2 sm:gap-3 mt-1.5 sm:mt-2 md:mt-3 pb-1 sm:pb-1.5 md:pb-2 flex-shrink-0">
         {sections.map((section, index) => {
           // Calculate opacity based on drag position for visual feedback
           let opacity = index === currentSection ? 1 : 0.4
@@ -491,12 +491,12 @@ const TopicSlider: React.FC<TopicSliderProps> = ({
             >
               {/* Add text labels for first two sections */}
               {index === 0 && (
-                <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-white/80 whitespace-nowrap">
+                <span className="absolute -bottom-4 sm:-bottom-5 md:-bottom-6 left-1/2 transform -translate-x-1/2 text-[10px] sm:text-xs text-white/80 whitespace-nowrap">
                   Account
                 </span>
               )}
               {index === 1 && (
-                <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-white/80 whitespace-nowrap">
+                <span className="absolute -bottom-4 sm:-bottom-5 md:-bottom-6 left-1/2 transform -translate-x-1/2 text-[10px] sm:text-xs text-white/80 whitespace-nowrap">
                   First Aid
                 </span>
               )}
