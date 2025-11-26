@@ -1,106 +1,111 @@
 import { NextResponse } from 'next/server'
 
+// Use Tatoeba's free API for real example sentences
 export async function POST(request: Request) {
   try {
     const { word, translation, targetLanguage, nativeLanguage } = await request.json()
 
-    console.log('🔍 Example sentence request:', { word, targetLanguage, nativeLanguage })
+    console.log('🔍 Fetching example from Tatoeba:', { word, targetLanguage })
 
-    // Use Google Gemini Free API to generate example sentences
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
-
-    if (!GEMINI_API_KEY) {
-      console.warn('⚠️ No Gemini API key found - using template fallback')
-      return NextResponse.json(getTemplateFallback(word, translation, targetLanguage, nativeLanguage))
+    // Map language names to ISO 639-3 codes used by Tatoeba
+    const langCodes: { [key: string]: string } = {
+      'German': 'deu',
+      'French': 'fra', 
+      'Spanish': 'spa',
+      'Italian': 'ita',
+      'Portuguese': 'por',
+      'Dutch': 'nld',
+      'Russian': 'rus',
+      'Japanese': 'jpn',
+      'Chinese': 'cmn',
+      'Korean': 'kor',
+      'Arabic': 'ara',
+      'Turkish': 'tur',
+      'Polish': 'pol',
+      'Swedish': 'swe',
+      'Norwegian': 'nor',
+      'Danish': 'dan',
+      'Finnish': 'fin',
+      'Greek': 'ell',
+      'Czech': 'ces',
+      'Hungarian': 'hun',
+      'Thai': 'tha',
+      'Vietnamese': 'vie',
+      'Hindi': 'hin',
+      'English': 'eng'
     }
 
-    const prompt = `Create a simple example sentence for language learning.
+    const targetLangCode = langCodes[targetLanguage] || 'eng'
+    const nativeLangCode = langCodes[nativeLanguage] || 'eng'
 
-Word to use: "${word}"
-Language: ${targetLanguage}
-Translation: "${translation}" (${nativeLanguage})
+    // Search Tatoeba for sentences containing the word
+    const searchUrl = `https://tatoeba.org/en/api_v0/search?from=${targetLangCode}&query=${encodeURIComponent(word)}&sort=relevance&limit=5`
+    
+    console.log('📡 Tatoeba URL:', searchUrl)
 
-Requirements:
-1. Write ONE natural sentence in ${targetLanguage} using "${word}"
-2. Make it conversational and realistic
-3. Use simple grammar suitable for beginners
-4. Keep it under 10 words
-5. Translate the full sentence to ${nativeLanguage}
-
-IMPORTANT: The sentence MUST be in ${targetLanguage}, NOT English.
-
-Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
-{"sentence":"your sentence in ${targetLanguage}","translation":"translation in ${nativeLanguage}"}`
-
-    console.log('🤖 Calling Gemini API...')
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.9,
-            maxOutputTokens: 150,
-          }
-        })
+    const response = await fetch(searchUrl, {
+      headers: {
+        'Accept': 'application/json'
       }
-    )
+    })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ Gemini API error:', response.status, errorText)
-      throw new Error(`Gemini API request failed: ${response.status}`)
+      console.warn('⚠️ Tatoeba API failed, using fallback')
+      throw new Error('Tatoeba API failed')
     }
 
     const data = await response.json()
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     
-    console.log('📝 Gemini response:', generatedText)
+    console.log('📝 Tatoeba response:', JSON.stringify(data, null, 2))
 
-    // Try to parse JSON from the response
-    try {
-      // Remove markdown code blocks if present
-      let cleanText = generatedText.trim()
-      cleanText = cleanText.replace(/```json\s*/g, '').replace(/```\s*/g, '')
-      
-      // Find JSON object
-      const jsonMatch = cleanText.match(/\{[\s\S]*?"sentence"[\s\S]*?"translation"[\s\S]*?\}/)
-      
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
+    // Get sentences with translations
+    if (data.results && data.results.length > 0) {
+      for (const result of data.results) {
+        const sentence = result.text
         
-        console.log('✅ Parsed successfully:', parsed)
-        
-        return NextResponse.json({
-          sentence: parsed.sentence || getTemplateFallback(word, translation, targetLanguage, nativeLanguage).sentence,
-          translation: parsed.translation || getTemplateFallback(word, translation, targetLanguage, nativeLanguage).translation
-        })
-      } else {
-        console.warn('⚠️ No JSON match found in response')
+        // Look for translation in native language
+        if (result.translations && result.translations.length > 0) {
+          // Find translation in user's native language
+          const translationObj = result.translations.find((t: any) => 
+            t.lang === nativeLangCode
+          )
+          
+          if (translationObj) {
+            console.log('✅ Found matching sentence with translation')
+            return NextResponse.json({
+              sentence: sentence,
+              translation: translationObj.text
+            })
+          }
+          
+          // If no exact language match, use first English translation
+          const engTranslation = result.translations.find((t: any) => t.lang === 'eng')
+          if (engTranslation) {
+            console.log('✅ Using English translation')
+            return NextResponse.json({
+              sentence: sentence,
+              translation: engTranslation.text
+            })
+          }
+          
+          // Use any available translation
+          if (result.translations[0]) {
+            console.log('✅ Using first available translation')
+            return NextResponse.json({
+              sentence: sentence,
+              translation: result.translations[0].text
+            })
+          }
+        }
       }
-    } catch (parseError) {
-      console.error('❌ Failed to parse Gemini response:', parseError)
-      console.error('Raw text:', generatedText)
     }
 
-    // Fallback to template
-    console.log('⚠️ Using template fallback')
+    console.log('⚠️ No suitable sentence found, using template')
     return NextResponse.json(getTemplateFallback(word, translation, targetLanguage, nativeLanguage))
 
   } catch (error) {
-    console.error('❌ Error generating example sentence:', error)
+    console.error('❌ Error fetching from Tatoeba:', error)
     const { word, translation, targetLanguage, nativeLanguage } = await request.json()
-    
-    // Return template fallback
     return NextResponse.json(getTemplateFallback(word, translation, targetLanguage, nativeLanguage))
   }
 }
