@@ -75,7 +75,7 @@ Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
       cleanText = cleanText.replace(/```json\s*/g, '').replace(/```\s*/g, '')
       
       // Find JSON object
-      const jsonMatch = cleanText.match(/\{[^}]*"sentence"[^}]*"translation"[^}]*\}/s)
+      const jsonMatch = cleanText.match(/\{[\s\S]*?"sentence"[\s\S]*?"translation"[\s\S]*?\}/)
       
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0])
