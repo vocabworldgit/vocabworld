@@ -2499,6 +2499,12 @@ export function LanguageSelector() {
     }
   }
 
+  // Long-press handlers for example sentence modal
+  const longPressHandlers = useLongPress({
+    onLongPress: () => setShowExampleSentence(true),
+    delay: 600
+  })
+
   const handlePrevious = () => {
     if (vocabulary.length > 0) {
       // Stop any current audio and auto-play sequence
@@ -2717,10 +2723,7 @@ export function LanguageSelector() {
 
               <div className="space-y-6 mb-12" onTouchStart={(e) => e.stopPropagation()}>
                 <div 
-                  {...useLongPress({
-                    onLongPress: () => setShowExampleSentence(true),
-                    delay: 600
-                  })}
+                  {...longPressHandlers}
                   className={`bg-black/40 border border-white/20 rounded-2xl p-8 transition-all duration-300 shadow-lg cursor-pointer select-none ${
                   currentAudioStep === 'training' 
                     ? 'bg-blue-500/20 border-blue-400/30 scale-105' 
