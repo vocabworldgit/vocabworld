@@ -15,16 +15,27 @@ export async function POST(request: Request) {
       })
     }
 
-    const prompt = `Generate a simple, practical example sentence using the word "${word}" in ${targetLanguage}. 
-Then translate that exact sentence to ${nativeLanguage}.
+    const prompt = `You are a language learning assistant. Create a simple, practical example sentence for a beginner learner.
+
+Word: "${word}" (in ${targetLanguage})
+Translation: "${translation}" (in ${nativeLanguage})
+
+Create ONE short, simple sentence using "${word}" that a beginner can understand. The sentence should:
+- Be in ${targetLanguage} (the language being learned)
+- Use everyday, common words
+- Be practical and useful for real conversations
+- Be clear and easy to understand for beginners
+- Maximum 8-10 words
+
+Then provide the translation of that sentence in ${nativeLanguage}.
 
 Format your response as JSON:
 {
-  "sentence": "example sentence in ${targetLanguage}",
-  "translation": "translation in ${nativeLanguage}"
+  "sentence": "simple sentence in ${targetLanguage} using ${word}",
+  "translation": "translation of that sentence in ${nativeLanguage}"
 }
 
-Keep it simple, natural, and conversational. Use common everyday language.`
+Keep it conversational and beginner-friendly.`
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,

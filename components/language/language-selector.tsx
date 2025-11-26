@@ -2736,7 +2736,6 @@ export function LanguageSelector() {
                     )}
                   </div>
                   <p className="text-white text-2xl font-medium">{getCurrentContent().sourceWord}</p>
-                  <p className="text-white/40 text-xs mt-2">💡 Long-press for example</p>
                 </div>
                 <div className={`bg-black/40 border border-white/20 rounded-2xl p-8 transition-all duration-300 shadow-lg ${
                   currentAudioStep === 'main' 
